@@ -1,139 +1,163 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import SidebarWrapper from "@/components/ui/sidebar";
+import UsersHeader from './UsersHeader';
+import UsersTable from './UsersTable';
+import UsersPagination from './UsersPagination';
+import AddUserModal from './AddUserModal';
+import EditUserModal from './EditUserModal';
 
-// Define the User type
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-};
+const initialUsers = [
+  { id: 11, nome: 'Ricardo Almeida', email: 'ricardo.almeida@empresa.com', cargo: 'Arquiteto de Software' },
+  { id: 12, nome: 'Sofia Ribeiro', email: 'sofia.ribeiro@empresa.com', cargo: 'Desenvolvedora Mobile' },
+  // ... outros usuários
+];
 
-import UsersHeader from "./UsersHeader";
-import UsersTable from "./UsersTable";
-import UsersPagination from "./UsersPagination";
-import AddUserModal from "./AddUserModal";
-import EditUserModal from "./EditUserModal";
+export default function Page() {
+  // Estado para armazenar a lista de usuários
+  const [usuarios, setUsuarios] = useState(initialUsers);
+  
+  // Estado para paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const registrosPorPagina = 5;
 
+  // Estado para pesquisa
+  const [termoPesquisa, setTermoPesquisa] = useState('');
+  const [usuariosFiltrados, setUsuariosFiltrados] = useState([...usuarios]);
 
-import {
-  getInitials,
-  getAvatarGradient,
-  getRoleColor,
-  getRoleIcon,
-} from "../userUtils";
+  // Estado para o modal de adicionar usuário
+  const [modalAdicionar, setModalAdicionar] = useState(false);
+  
+  // Estado para o modal de editar usuário
+  const [modalEditar, setModalEditar] = useState(false);
+  const [usuarioEmEdicao, setUsuarioEmEdicao] = useState(null);
 
+  // Efeito para filtrar usuários quando o termo de pesquisa muda
+  useEffect(() => {
+    if (termoPesquisa.trim() === '') {
+      setUsuariosFiltrados([...usuarios]);
+    } else {
+      const resultados = usuarios.filter(usuario => 
+        usuario.nome.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+        usuario.email.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+        usuario.cargo.toLowerCase().includes(termoPesquisa.toLowerCase())
+      );
+      setUsuariosFiltrados(resultados);
+    }
+    // Voltar para a primeira página quando realizar uma pesquisa
+    setPaginaAtual(1);
+  }, [termoPesquisa, usuarios]);
 
-
-const Page = () => {
-  const [users, setUsers] = useState<User[]>([
-    { id: 1, name: "Ricardo Almeida", email: "ricardo.almeida@empresa.com", role: "Software Architect" },
-    { id: 2, name: "Sofia Ribeiro", email: "sofia.ribeiro@empresa.com", role: "Mobile Developer" },
-    { id: 3, name: "Marcelo Farias", email: "marcelo.farias@empresa.com", role: "DevOps Engineer" },
-    { id: 4, name: "Tatiane Lopes", email: "tatiane.lopes@empresa.com", role: "Product Manager" },
-    { id: 5, name: "André Cunha", email: "andre.cunha@empresa.com", role: "Full Stack Developer" },
-    { id: 6, name: "Bianca Ferreira", email: "bianca.ferreira@empresa.com", role: "BI Analyst" },
-    { id: 7, name: "Gabriel Rocha", email: "gabriel.rocha@empresa.com", role: "Data Scientist" },
-    { id: 8, name: "Patrícia Nunes", email: "patricia.nunes@empresa.com", role: "Agile Coach" },
-    { id: 9, name: "Fábio Cardoso", email: "fabio.cardoso@empresa.com", role: "Data Engineer" },
-    { id: 10, name: "Larissa Teixeira", email: "larissa.teixeira@empresa.com", role: "Security Specialist" },
-    { id: 11, name: "Diego Martins", email: "diego.martins@empresa.com", role: "Frontend Developer" },
-    { id: 12, name: "Isabela Moraes", email: "isabela.moraes@empresa.com", role: "Tech Recruiter" },
-  ]);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-
-  const itemsPerPage = 5;
-
-  const filteredUsers = searchTerm
-    ? users.filter((user) =>
-        [user.name, user.email, user.role].some((field) =>
-          field.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      )
-    : users;
-
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  // Calcular total de páginas baseado nos resultados filtrados
+  const totalPaginas = Math.ceil(usuariosFiltrados.length / registrosPorPagina);
+  
+  // Obter usuários da página atual
+  const usuariosPaginados = usuariosFiltrados.slice(
+    (paginaAtual - 1) * registrosPorPagina,
+    paginaAtual * registrosPorPagina
   );
 
-  const handleAddUser = (newUser: Omit<User, "id">) => {
-    const user: User = {
-      ...newUser,
-      id: users.length + 1,
-    };
-    setUsers([...users, user]);
-    setIsAddModalOpen(false);
+  // Funções de navegação de páginas
+  const handlePaginacao = {
+    irParaPaginaAnterior: () => {
+      if (paginaAtual > 1) {
+        setPaginaAtual(paginaAtual - 1);
+      }
+    },
+    irParaProximaPagina: () => {
+      if (paginaAtual < totalPaginas) {
+        setPaginaAtual(paginaAtual + 1);
+      }
+    },
+    irParaPagina: (numeroPagina) => {
+      if (numeroPagina >= 1 && numeroPagina <= totalPaginas) {
+        setPaginaAtual(numeroPagina);
+      }
+    }
   };
 
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
-    setIsEditModalOpen(true);
+  // Função para lidar com mudanças no campo de pesquisa
+  const handlePesquisaChange = (e) => {
+    setTermoPesquisa(e.target.value);
   };
 
-  const handleSaveEdit = (updatedUser: User) => {
-    setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
-    setIsEditModalOpen(false);
-    setEditingUser(null);
+  // Função para adicionar um novo usuário
+  const adicionarUsuario = (novoUsuario) => {
+    if (novoUsuario.nome && novoUsuario.email && novoUsuario.cargo) {
+      setUsuarios([
+        ...usuarios,
+        {
+          id: usuarios.length + 1,
+          ...novoUsuario
+        }
+      ]);
+      setModalAdicionar(false);
+    }
   };
 
-  const handleDeleteUser = (id: number) => {
-    setUsers(users.filter((user) => user.id !== id));
+  // Função para iniciar a edição de um usuário
+  const iniciarEdicao = (usuario) => {
+    setUsuarioEmEdicao({ ...usuario });
+    setModalEditar(true);
+  };
+
+  // Função para salvar as alterações de um usuário editado
+  const salvarEdicao = (usuarioEditado) => {
+    if (usuarioEditado && usuarioEditado.nome && usuarioEditado.email && usuarioEditado.cargo) {
+      setUsuarios(
+        usuarios.map(usuario => 
+          usuario.id === usuarioEditado.id ? usuarioEditado : usuario
+        )
+      );
+      setModalEditar(false);
+      setUsuarioEmEdicao(null);
+    }
+  };
+
+  // Função para deletar um usuário
+  const deletarUsuario = (id) => {
+    setUsuarios(usuarios.filter(usuario => usuario.id !== id));
   };
 
   return (
     <SidebarWrapper>
       <div className="p-4 w-full bg-gray-50">
-        <UsersHeader
-          searchTerm={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onAddUser={() => setIsAddModalOpen(true)}
+        <UsersHeader 
+          termoPesquisa={termoPesquisa}
+          handlePesquisaChange={handlePesquisaChange}
+          setModalAdicionar={setModalAdicionar}
         />
 
         <UsersTable
-          users={paginatedUsers}
-          onEdit={handleEditUser}
-          onDelete={handleDeleteUser}
-          getInitials={getInitials}
-          getAvatarGradient={getAvatarGradient}
-          getRoleColor={getRoleColor}
-          getRoleIcon={getRoleIcon}
+          usuarios={usuariosPaginados}
+          iniciarEdicao={iniciarEdicao}
+          deletarUsuario={deletarUsuario}
         />
 
         <UsersPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          goToPreviousPage={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-          goToNextPage={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-          goToPage={(n) => setCurrentPage(n)}
+          paginaAtual={paginaAtual}
+          totalPaginas={totalPaginas}
+          usuariosFiltrados={usuariosFiltrados}
+          registrosPorPagina={registrosPorPagina}
+          handlePaginacao={handlePaginacao}
         />
 
-        <AddUserModal
-          open={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          onSave={handleAddUser}
-        />
+        {modalAdicionar && (
+          <AddUserModal
+            setModalAdicionar={setModalAdicionar}
+            adicionarUsuario={adicionarUsuario}
+          />
+        )}
 
-        {isEditModalOpen && editingUser && (
+        {modalEditar && usuarioEmEdicao && (
           <EditUserModal
-            open={isEditModalOpen}
-            user={editingUser}
-            onClose={() => setIsEditModalOpen(false)}
-            onSave={handleSaveEdit}
+            setModalEditar={setModalEditar}
+            usuarioEmEdicao={usuarioEmEdicao}
+            salvarEdicao={salvarEdicao}
           />
         )}
       </div>
     </SidebarWrapper>
   );
-};
-
-export default Page;
+}

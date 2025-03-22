@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { AlertMessage } from "./AlertMessage";
+import { userService } from "../../lib/services/userService"; // Make sure this path is correct
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => void;
@@ -10,26 +11,44 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onSubmit, error, success }: LoginFormProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [localError, setLocalError] = useState('');
+  const [localSuccess, setLocalSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Add this state
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    // Simulando uma requisição
-    setTimeout(() => {
-      onSubmit(email, password);
-      setLoading(false);
-    }, 1000);
-  };
-
+  // Add the togglePasswordVisibility function
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setLocalError('');
+
+    
+    const payload = { email, password };
+    console.log('Payload sendo enviado:', payload);
+    
+    try {
+      const response = await userService.login({ email, password });
+      setLocalSuccess(response.message);
+      
+      // Store user information and token in localStorage or a state management solution
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      
+      // Redirect after successful login
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setLocalError(err.response?.data?.message || 'Erro ao realizar login');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return (
     <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-0">
       <motion.div
@@ -53,8 +72,12 @@ export function LoginForm({ onSubmit, error, success }: LoginFormProps) {
           </div>
 
           <AnimatePresence>
-            {error && <AlertMessage type="error" message={error} />}
-            {success && <AlertMessage type="success" message={success} />}
+            {(error || localError) && (
+              <AlertMessage type="error" message={error || localError} />
+            )}
+            {(success || localSuccess) && (
+              <AlertMessage type="success" message={success || localSuccess} />
+            )}
           </AnimatePresence>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -117,10 +140,10 @@ export function LoginForm({ onSubmit, error, success }: LoginFormProps) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium p-3 rounded-lg flex items-center justify-center transition-all duration-300 transform hover:translate-y-[-2px] hover:shadow-lg"
             >
-              {loading ? (
+              {isLoading ? (
                 <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
