@@ -1,4 +1,3 @@
-// src/services/userService.ts
 import api from '../api/axios';
 import { User } from './types/User';
 
@@ -18,10 +17,37 @@ interface LoginResponse {
   token: string;
 }
 
-interface PaginatedResponse {
-  users: User[];
-  totalPages: number;
+interface GetAllUser {
+  id: number;
+  firstName: string;
+  email: string;
+  phoneNumber: string;
+  gender: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
 }
+
+// Configurar interceptor para incluir token em todas as requisições
+export const setupAuthInterceptor = () => {
+  api.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+};
 
 // Main userService object with authentication methods
 export const userService = {
@@ -30,42 +56,70 @@ export const userService = {
     console.log('Credenciais enviadas para o servidor:', credentials);
     try {
       const response = await api.post<LoginResponse>('/api/User/login', credentials);
+      
+      // Se o login for bem-sucedido, salvar o token
+      if (response.data && response.data.token) {
+        localStorage.setItem("auth_token", response.data.token);
+        // Configurar o interceptor após o login bem-sucedido
+        setupAuthInterceptor();
+      }
+      
       return response.data;
     } catch (error) {
       throw error;
     }
   },
   
-  // Get all users function (sem paginação - versão original)
-  getAllUsers: async (): Promise<User[]> => {
+  // Get all users
+  getAllUsers: async (): Promise<GetAllUser[]> => {
     try {
-      const response = await api.get<User[]>('/api/User/GetAllUsers');
-      return response.data;
+      console.log("Iniciando requisição de getAllUsers...");
+      
+      // Verificar token (embora o interceptor já faça isso)
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("Token não encontrado no localStorage. Por favor, faça login novamente.");
+      }
+      
+      console.log("Token encontrado:", token.substring(0, 15) + "..."); // Mostra parte do token por segurança
+      
+      const response = await api.get<GetAllUser[]>("/api/User/GetAllUsers");
+      
+      // Logs detalhados para depuração
+      console.log("Status da resposta:", response.status);
+      console.log("Headers da resposta:", response.headers);
+      console.log("Dados da resposta:", response.data);
+      
+      // Se a resposta for bem-sucedida mas não contiver dados
+      if (!response.data) {
+        console.warn("A resposta foi bem-sucedida, mas não contém dados!");
+      }
+      
+      return response.data || [];
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
-      throw error;
-    }
-  },
-  
-  // Get all users with pagination
-  getAllUsersPaginated: async (page: number, limit: number): Promise<PaginatedResponse> => {
-    try {
-      const response = await api.get<PaginatedResponse>(`/api/User/GetAllUsers?page=${page}&limit=${limit}`);
-      return response.data;
-    } catch (error) {
-      console.error('Erro ao buscar usuários paginados:', error);
-      throw error;
-    }
-  },
-  
-  // Get user by id
-  getUserById: async (id: number): Promise<User> => {
-    try {
-      const response = await api.get<User>(`/api/User/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Erro ao buscar usuário ${id}:`, error);
-      throw error;
+      console.error("Erro ao carregar usuários:", error);
+      
+      // Log detalhado do erro
+      if (error.response) {
+        // O servidor respondeu com um status diferente de 2xx
+        console.error("Detalhes do erro de resposta:");
+        console.error("Status:", error.response.status);
+        console.error("Headers:", error.response.headers);
+        console.error("Dados:", error.response.data);
+      } else if (error.request) {
+        // A requisição foi feita mas não houve resposta
+        console.error("Não houve resposta do servidor:", error.request);
+      } else {
+        // Algo aconteceu na configuração da requisição
+        console.error("Erro na configuração da requisição:", error.message);
+      }
+      
+      // Tratamento específico para erro de autenticação
+      if (error.response && error.response.status === 401) {
+        throw new Error("Sessão expirada ou inválida. Por favor, faça login novamente.");
+      } else {
+        throw new Error("Falha ao carregar a lista de usuários: " + (error.message || "Erro desconhecido"));
+      }
     }
   },
   
@@ -101,3 +155,6 @@ export const userService = {
     }
   }
 };
+
+// Inicializar interceptor ao carregar o módulo
+setupAuthInterceptor();
