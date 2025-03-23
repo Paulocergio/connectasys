@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Edit2, Trash2, CheckCircle, XCircle, ChevronDown, Search, RefreshCw } from 'lucide-react';
+import { Edit2, Trash2, CheckCircle, XCircle, ChevronDown, RefreshCw, User } from 'lucide-react';
 import { userService } from "../../lib/services/userService"; 
 
-const UsersTable = () => {
+const ElegantUsersTable = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
+  const [expandedUser, setExpandedUser] = useState(null);
   
   useEffect(() => {
     fetchUsuarios();
@@ -62,12 +62,15 @@ const UsersTable = () => {
     }
   };
 
-  const filteredUsuarios = usuarios.filter(user => 
-    user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const toggleUserDetails = (userId) => {
+    if (expandedUser === userId) {
+      setExpandedUser(null);
+    } else {
+      setExpandedUser(userId);
+    }
+  };
 
-  const sortedUsuarios = [...filteredUsuarios].sort((a, b) => {
+  const sortedUsuarios = [...usuarios].sort((a, b) => {
     if (!sortField) return 0;
     
     const aValue = a[sortField] || '';
@@ -82,196 +85,182 @@ const UsersTable = () => {
 
   if (loading) {
     return (
-      <div className="w-full p-12 text-center bg-white rounded-xl shadow-md">
-        <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-gray-600 text-lg">Carregando usuários...</p>
+      <div className="w-full p-8 text-center bg-white rounded-lg shadow">
+        <div className="animate-spin h-10 w-10 border-4 border-gray-300 border-t-gray-600 rounded-full mx-auto mb-4"></div>
+        <p className="text-gray-600">Carregando usuários...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full p-8 text-center bg-red-50 rounded-xl border border-red-100 shadow-md">
-        <div className="text-red-500 text-6xl mb-4">⚠️</div>
-        <p className="text-red-600 font-medium text-lg mb-2">Ops! Algo deu errado</p>
-        <p className="text-red-600 mb-4">{error}</p>
-        <div className="flex justify-center gap-4">
-          <button 
-            onClick={() => window.location.href = '/login'} 
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            Ir para login
-          </button>
-          <button 
-            onClick={() => fetchUsuarios()} 
-            className="px-6 py-2 flex items-center gap-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
-          >
-            <RefreshCw className="h-4 w-4" /> Tentar novamente
-          </button>
-        </div>
+      <div className="w-full p-6 text-center bg-white rounded-lg shadow">
+        <div className="text-gray-400 text-4xl mb-2">⚠️</div>
+        <p className="text-gray-600 font-medium mb-2">Algo deu errado</p>
+        <p className="text-gray-500 mb-4 text-sm">{error}</p>
+        <button 
+          onClick={() => fetchUsuarios()} 
+          className="px-4 py-2 flex items-center gap-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors mx-auto"
+        >
+          <RefreshCw className="h-4 w-4" /> Tentar novamente
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden w-full border border-gray-100">
-      {/* Cabeçalho com título e pesquisa */}
-      <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <h2 className="text-xl font-bold text-gray-800">Gerenciamento de Usuários</h2>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Buscar por nome ou email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64 transition-all"
-          />
-        </div>
+    <div className="bg-white rounded-lg shadow w-full">
+      <div className="px-6 py-4 border-b border-gray-100">
+        
       </div>
-
-      {/* Status da pesquisa */}
-      <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
-        <p className="text-sm text-gray-600">
-          Exibindo {filteredUsuarios.length} {filteredUsuarios.length === 1 ? 'usuário' : 'usuários'}
-          {searchTerm && ` para "${searchTerm}"`}
-        </p>
-      </div>
-
-      <div className="overflow-x-auto w-full">
+      
+      <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-              <th onClick={() => handleSort('firstName')} className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors">
-                <div className="flex items-center gap-2">
-                  Nome
+            <tr className="border-b border-gray-100">
+              <th onClick={() => handleSort('firstName')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                <div className="flex items-center gap-1">
+                  Usuário
                   {sortField === 'firstName' && (
-                    <ChevronDown className={`h-4 w-4 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
                   )}
                 </div>
               </th>
-              <th onClick={() => handleSort('email')} className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors">
-                <div className="flex items-center gap-2">
+              <th onClick={() => handleSort('email')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hidden md:table-cell">
+                <div className="flex items-center gap-1">
                   Email
                   {sortField === 'email' && (
-                    <ChevronDown className={`h-4 w-4 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
                   )}
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gênero</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endereço</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">País</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CEP</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perfil</th>
-              <th onClick={() => handleSort('isActive')} className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors">
-                <div className="flex items-center gap-2">
+              <th onClick={() => handleSort('role')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hidden lg:table-cell">
+                <div className="flex items-center gap-1">
+                  Perfil
+                  {sortField === 'role' && (
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                  )}
+                </div>
+              </th>
+              <th onClick={() => handleSort('isActive')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                <div className="flex items-center gap-1">
                   Status
                   {sortField === 'isActive' && (
-                    <ChevronDown className={`h-4 w-4 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
                   )}
                 </div>
               </th>
-              <th onClick={() => handleSort('createdAt')} className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors">
-                <div className="flex items-center gap-2">
-                  Criado em
-                  {sortField === 'createdAt' && (
-                    <ChevronDown className={`h-4 w-4 transition-transform ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
-                  )}
-                </div>
-              </th>
-              <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-50">
             {sortedUsuarios.length > 0 ? (
-              sortedUsuarios.map((usuario, index) => (
-                <tr key={usuario.id || index} className="hover:bg-blue-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-gray-900">{usuario.firstName || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.email || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.phoneNumber || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.gender || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.address || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.city || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.state || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.country || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.zipCode || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{usuario.role || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
+              sortedUsuarios.map((usuario) => (
+                <React.Fragment key={usuario.id}>
+                  <tr className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => toggleUserDetails(usuario.id)}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-800">{usuario.firstName || "-"}</div>
+                          <div className="text-sm text-gray-500 md:hidden">{usuario.email || "-"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 hidden md:table-cell">
+                      <div className="text-sm text-gray-500">{usuario.email || "-"}</div>
+                    </td>
+                    <td className="px-6 py-4 hidden lg:table-cell">
+                      <div className="text-sm text-gray-500">{usuario.role || "-"}</div>
+                    </td>
+                    <td className="px-6 py-4">
                       {usuario.isActive ? (
-                        <span className="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
-                          <CheckCircle className="h-4 w-4 mr-1" /> Ativo
+                        <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-medium rounded-full bg-emerald-100 text-emerald-800">
+                          <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" /> Ativo
                         </span>
                       ) : (
-                        <span className="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">
-                          <XCircle className="h-4 w-4 mr-1" /> Inativo
+                        <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-medium rounded-full bg-rose-100 text-rose-800">
+                          <XCircle className="h-3 w-3 mr-1 text-rose-500" /> Inativo
                         </span>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{formatDate(usuario.createdAt)}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex items-center justify-center space-x-3">
-                      <button
-                        onClick={() => iniciarEdicao(usuario)}
-                        className="p-1.5 bg-blue-100 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-200 transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Tem certeza que deseja excluir o usuário ${usuario.firstName}?`)) {
-                            deletarUsuario(usuario.id);
-                          }
-                        }}
-                        className="p-1.5 bg-red-100 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-200 transition-colors"
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            iniciarEdicao(usuario);
+                          }}
+                          className="p-1 bg-gray-100 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200 transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Tem certeza que deseja excluir o usuário ${usuario.firstName}?`)) {
+                              deletarUsuario(usuario.id);
+                            }
+                          }}
+                          className="p-1 bg-rose-100 rounded-md text-rose-600 hover:text-rose-900 hover:bg-rose-200 transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedUser === usuario.id && (
+                    <tr className="bg-gray-50">
+                      <td colSpan={5} className="px-6 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">Telefone</div>
+                            <div className="text-sm text-gray-800">{usuario.phoneNumber || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">Gênero</div>
+                            <div className="text-sm text-gray-800">{usuario.gender || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">Endereço</div>
+                            <div className="text-sm text-gray-800">{usuario.address || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">Cidade</div>
+                            <div className="text-sm text-gray-800">{usuario.city || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">Estado</div>
+                            <div className="text-sm text-gray-800">{usuario.state || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">País</div>
+                            <div className="text-sm text-gray-800">{usuario.country || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">CEP</div>
+                            <div className="text-sm text-gray-800">{usuario.zipCode || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 uppercase mb-1">Criado em</div>
+                            <div className="text-sm text-gray-800">{formatDate(usuario.createdAt)}</div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))
             ) : (
               <tr>
-                <td colSpan={13} className="px-6 py-8 text-center">
+                <td colSpan={5} className="px-6 py-8 text-center">
                   <div className="flex flex-col items-center justify-center">
-                    <div className="text-gray-400 text-4xl mb-2">🔍</div>
+                    <div className="text-gray-300 text-4xl mb-2">📋</div>
                     <p className="text-gray-500 font-medium">Nenhum usuário encontrado</p>
-                    {searchTerm && (
-                      <p className="text-gray-400 text-sm mt-1">
-                        Tente usar termos diferentes na busca
-                      </p>
-                    )}
                   </div>
                 </td>
               </tr>
@@ -279,28 +268,8 @@ const UsersTable = () => {
           </tbody>
         </table>
       </div>
-      
-      {/* Rodapé com contagem e paginação */}
-      <div className="p-4 border-t border-gray-100 flex justify-between items-center bg-gray-50">
-        <div className="text-sm text-gray-500">
-          Total: {usuarios.length} {usuarios.length === 1 ? 'usuário' : 'usuários'}
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="px-3 py-1 bg-white border border-gray-200 rounded-md text-gray-600 hover:bg-gray-100 transition-colors">
-            Anterior
-          </button>
-          <div className="flex">
-            <button className="px-3 py-1 bg-blue-500 text-white rounded-md">1</button>
-            <button className="px-3 py-1 hover:bg-gray-100 text-gray-600 rounded-md">2</button>
-            <button className="px-3 py-1 hover:bg-gray-100 text-gray-600 rounded-md">3</button>
-          </div>
-          <button className="px-3 py-1 bg-white border border-gray-200 rounded-md text-gray-600 hover:bg-gray-100 transition-colors">
-            Próximo
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
 
-export default UsersTable;
+export default ElegantUsersTable;
