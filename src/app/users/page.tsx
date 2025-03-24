@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import SidebarWrapper from "@/components/ui/sidebar";
-import UsersHeader from './UsersHeader';
 import UsersTable from './UsersTable';
 import UsersPagination from './UsersPagination';
 import AddUserModal from './AddUserModal';
@@ -123,11 +122,7 @@ export default function Page() {
   return (
     <SidebarWrapper>
       <div className="p-4 w-full bg-gray-50">
-        <UsersHeader 
-          termoPesquisa={termoPesquisa}
-          handlePesquisaChange={handlePesquisaChange}
-          setModalAdicionar={setModalAdicionar}
-        />
+       
 
         <UsersTable
           usuarios={usuariosPaginados}

@@ -33,6 +33,22 @@ interface GetAllUser {
   createdAt: string;
 }
 
+interface userCreate {
+  firstName: string;
+  email: string;
+  phoneNumber: string;
+  PasswordHash: string; // Ajustado para corresponder ao backend
+  gender: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 // Configurar interceptor para incluir token em todas as requisições
 export const setupAuthInterceptor = () => {
   api.interceptors.request.use(
@@ -51,70 +67,48 @@ export const setupAuthInterceptor = () => {
 
 // Main userService object with authentication methods
 export const userService = {
-  // Login function
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     console.log('Credenciais enviadas para o servidor:', credentials);
     try {
       const response = await api.post<LoginResponse>('/api/User/login', credentials);
-      
-      // Se o login for bem-sucedido, salvar o token
       if (response.data && response.data.token) {
         localStorage.setItem("auth_token", response.data.token);
-        // Configurar o interceptor após o login bem-sucedido
         setupAuthInterceptor();
       }
-      
       return response.data;
     } catch (error) {
       throw error;
     }
   },
-  
-  // Get all users
+
   getAllUsers: async (): Promise<GetAllUser[]> => {
     try {
       console.log("Iniciando requisição de getAllUsers...");
-      
-      // Verificar token (embora o interceptor já faça isso)
       const token = localStorage.getItem("auth_token");
       if (!token) {
         throw new Error("Token não encontrado no localStorage. Por favor, faça login novamente.");
       }
-      
-      console.log("Token encontrado:", token.substring(0, 15) + "..."); // Mostra parte do token por segurança
-      
+      console.log("Token encontrado:", token.substring(0, 15) + "...");
       const response = await api.get<GetAllUser[]>("/api/User/GetAllUsers");
-      
-      // Logs detalhados para depuração
       console.log("Status da resposta:", response.status);
       console.log("Headers da resposta:", response.headers);
       console.log("Dados da resposta:", response.data);
-      
-      // Se a resposta for bem-sucedida mas não contiver dados
       if (!response.data) {
         console.warn("A resposta foi bem-sucedida, mas não contém dados!");
       }
-      
       return response.data || [];
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
-      
-      // Log detalhado do erro
       if (error.response) {
-        // O servidor respondeu com um status diferente de 2xx
         console.error("Detalhes do erro de resposta:");
         console.error("Status:", error.response.status);
         console.error("Headers:", error.response.headers);
         console.error("Dados:", error.response.data);
       } else if (error.request) {
-        // A requisição foi feita mas não houve resposta
         console.error("Não houve resposta do servidor:", error.request);
       } else {
-        // Algo aconteceu na configuração da requisição
         console.error("Erro na configuração da requisição:", error.message);
       }
-      
-      // Tratamento específico para erro de autenticação
       if (error.response && error.response.status === 401) {
         throw new Error("Sessão expirada ou inválida. Por favor, faça login novamente.");
       } else {
@@ -122,30 +116,18 @@ export const userService = {
       }
     }
   },
-  
-  // Create new user
-  createUser: async (userData: Omit<User, 'id' | 'createdAt'>): Promise<User> => {
+
+  createUser: async (userData: Omit<userCreate, 'id'>): Promise<userCreate> => {
     try {
-      const response = await api.post<User>('/api/User', userData);
+      console.log("Enviando dados para criar usuário:", userData); // Log para depuração
+      const response = await api.post<userCreate>('api/User/CreateUser', userData);
       return response.data;
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
       throw error;
     }
   },
-  
-  // Update existing user
-  updateUser: async (id: number, userData: Partial<User>): Promise<User> => {
-    try {
-      const response = await api.put<User>(`/api/User/${id}`, userData);
-      return response.data;
-    } catch (error) {
-      console.error(`Erro ao atualizar usuário ${id}:`, error);
-      throw error;
-    }
-  },
-  
-  // Delete user
+
   deleteUser: async (id: number): Promise<void> => {
     try {
       await api.delete(`/api/User/${id}`);
@@ -153,7 +135,7 @@ export const userService = {
       console.error(`Erro ao excluir usuário ${id}:`, error);
       throw error;
     }
-  }
+  },
 };
 
 // Inicializar interceptor ao carregar o módulo

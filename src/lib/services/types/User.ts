@@ -22,4 +22,25 @@ export interface GetAllUser {
     role: string;
     isActive: boolean;
     createdAt: string;
+     
 }
+
+
+
+interface userCreate {
+
+    firstName: string;
+    email: string;
+    phoneNumber: string;
+    passwordHash: string;
+    gender: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    zipCode: string;
+    role: string;
+    isActive: boolean;
+    createdAt: string;
+  }
+  
