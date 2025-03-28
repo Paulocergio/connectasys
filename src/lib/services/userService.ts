@@ -1,6 +1,8 @@
+// src/lib/services/userService.ts
 import api from '../api/axios';
 import axios from 'axios';
 import { User, GetAllUser, LoginResponse, LoginCredentials, UserPayload } from './types/userTypes';
+
 export const setupAuthInterceptor = () => {
   api.interceptors.request.use(
     (config) => {
@@ -15,6 +17,7 @@ export const setupAuthInterceptor = () => {
     }
   );
 };
+
 export const userService = {
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     console.log('Credenciais enviadas para o servidor:', credentials);
@@ -29,6 +32,7 @@ export const userService = {
       throw error;
     }
   },
+
   async CreateOrUpdateUser(userData: UserPayload): Promise<UserPayload> {
     try {
       const { data } = await api.post<User>('api/User/CreateOrUpdateUser', userData);
@@ -45,6 +49,7 @@ export const userService = {
       }
     }
   },
+
   getAllUsers: async (): Promise<GetAllUser[]> => {
     try  {
       const token = localStorage.getItem("auth_token");
@@ -68,7 +73,6 @@ export const userService = {
     }
   },
 
-
   deleteUser: async (userId: number): Promise<void> => {
     try {
       const token = localStorage.getItem("auth_token");
@@ -87,10 +91,7 @@ export const userService = {
       }
       throw new Error("Erro desconhecido ao deletar usuário");
     }
-  },
-
-
+  }
 };
-
 
 setupAuthInterceptor();

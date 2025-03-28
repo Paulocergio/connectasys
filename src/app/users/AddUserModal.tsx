@@ -3,19 +3,28 @@ import { X, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { userService } from "../../lib/services/userService";
 import bcrypt from 'bcryptjs';
 
-
-import { UserFormData  , AddUserModalProps , UserResponse } from "../../lib/services/types/userTypes";  
-
+import { cepService } from '../../lib/services/cepService ';
 
 
 
 
-interface HandleChangeEvent extends React.ChangeEvent<HTMLInputElement | HTMLSelectElement> {}
+import { UserFormData, AddUserModalProps, UserResponse } from "../../lib/services/types/userTypes";
+
+
+
+
+
+interface HandleChangeEvent extends React.ChangeEvent<HTMLInputElement | HTMLSelectElement> { }
 
 const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [shouldShowPassword, setShouldShowPassword] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+
+
+
+
   const [userFormData, setUserFormData] = useState<UserFormData>({
     firstName: "",
     email: "",
@@ -49,6 +58,41 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
     });
   };
 
+
+  // Adicione esta função no seu componente
+  const formatCEP = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .slice(0, 9);
+  };
+
+  // Atualize o handleCEPChange:
+  const handleCEPChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCEP(e.target.value);
+
+    // Atualiza o campo CEP com formatação
+    handleInputChange({
+      ...e,
+      target: {
+        ...e.target,
+        value: formattedValue
+      }
+    });
+
+    // Busca quando tiver 8 dígitos (sem o hífen)
+    if (formattedValue.replace(/\D/g, '').length === 8) {
+      setIsLoadingCEP(true);
+      try {
+        const addressData = await cepService.fetchAddressByCEP(formattedValue.replace(/\D/g, ''));
+        // ... restante do código ...
+      } catch (error) {
+        console.error('Erro ao buscar CEP:', error);
+      } finally {
+        setIsLoadingCEP(false);
+      }
+    }
+  };
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
 
@@ -135,210 +179,254 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
 
           <form onSubmit={handleFormSubmit} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                    Nome*
-                  </label>
+              {/* Linha 1: Nome - Email */}
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome*
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={userFormData.firstName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-gray-900 placeholder-gray-400"
+                  placeholder="Digite o nome"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email*
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={userFormData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="Digite o email"
+                />
+              </div>
+
+              {/* Linha 2: Senha - Telefone */}
+              <div>
+                <label htmlFor="passwordHash" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Senha*
+                </label>
+                <div className="relative">
                   <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={userFormData.firstName}
+                    type={shouldShowPassword ? "text" : "password"}
+                    id="passwordHash"
+                    name="passwordHash"
+                    value={userFormData.passwordHash}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-gray-900 placeholder-gray-400"
-                    placeholder="Digite o nome"
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 pr-12"
+                    placeholder="Digite a senha"
                   />
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email*
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={userFormData.email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    placeholder="Digite o email"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="passwordHash" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Senha*
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={shouldShowPassword ? "text" : "password"}
-                      id="passwordHash"
-                      name="passwordHash"
-                      value={userFormData.passwordHash}
-                      onChange={handleInputChange}
-                      required
-                      minLength={8}
-                      autoComplete="new-password"
-                      className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 pr-12"
-                      placeholder="Digite a senha"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShouldShowPassword(!shouldShowPassword)}
-                      className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                      aria-label={shouldShowPassword ? "Esconder senha" : "Mostrar senha"}
-                    >
-                      {shouldShowPassword ? <EyeOff size={20} strokeWidth={2} /> : <Eye size={20} strokeWidth={2} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Telefone
-                  </label>
-                  <input
-                    type="text"
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    value={userFormData.phoneNumber}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    placeholder="Digite o telefone"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Gênero
-                  </label>
-                  <select
-                    id="gender"
-                    name="gender"
-                    value={userFormData.gender}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100"
+                  <button
+                    type="button"
+                    onClick={() => setShouldShowPassword(!shouldShowPassword)}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    aria-label={shouldShowPassword ? "Esconder senha" : "Mostrar senha"}
                   >
-                    <option value="">Selecione</option>
-                    <option value="masculine">Masculino</option>
-                    <option value="feminine">Feminino</option>
-                    <option value="other">Outro</option>
-                    <option value="prefer_not_to_say">Prefiro não informar</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Perfil*
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={userFormData.role}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value="">Selecione</option>
-                    <option value="user">Usuário</option>
-                    <option value="admin">Administrador</option>
-                    <option value="manager">Gerente</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    name="isActive"
-                    checked={userFormData.isActive}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-                  />
-                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                    Usuário ativo
-                  </label>
+                    {shouldShowPassword ? <EyeOff size={20} strokeWidth={2} /> : <Eye size={20} strokeWidth={2} />}
+                  </button>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Endereço
-                  </label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    value={userFormData.address}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    placeholder="Digite o endereço"
-                  />
-                </div>
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Telefone
+                </label>
+                <input
+                  type="text"
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={userFormData.phoneNumber}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="Digite o telefone"
+                />
+              </div>
 
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Cidade
-                  </label>
-                  <input
-                    type="text"
-                    id="city"
-                    name="city"
-                    value={userFormData.city}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    placeholder="Digite a cidade"
-                  />
-                </div>
+              {/* Linha 3: Gênero - CEP */}
+              <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Gênero
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={userFormData.gender}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Selecione</option>
+                  <option value="masculine">Masculino</option>
+                  <option value="feminine">Feminino</option>
+                  <option value="other">Outro</option>
+                  <option value="prefer_not_to_say">Prefiro não informar</option>
+                </select>
+              </div>
 
-                <div>
-                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Estado
-                  </label>
-                  <input
-                    type="text"
-                    id="state"
-                    name="state"
-                    value={userFormData.state}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    placeholder="Digite o estado"
-                  />
-                </div>
+              <div>
+  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    CEP
+  </label>
+  <div className="relative">
+    <input
+      type="text"
+      id="zipCode"
+      name="zipCode"
+      value={userFormData.zipCode}
+      onChange={async (e) => {
+        // Formata o CEP (XXXXX-XXX)
+        const formattedValue = e.target.value
+          .replace(/\D/g, '')
+          .replace(/(\d{5})(\d)/, '$1-$2')
+          .slice(0, 9);
+        
+        // Atualiza o campo CEP
+        setUserFormData(prev => ({
+          ...prev,
+          zipCode: formattedValue
+        }));
 
-                <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    País
-                  </label>
-                  <input
-                    type="text"
-                    id="country"
-                    name="country"
-                    value={userFormData.country}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    placeholder="Digite o país"
-                  />
-                </div>
+        // Busca o endereço quando o CEP estiver completo (8 dígitos)
+        if (formattedValue.replace(/\D/g, '').length === 8) {
+          try {
+            setIsLoadingCEP(true);
+            const addressData = await cepService.fetchAddressByCEP(formattedValue.replace(/\D/g, ''));
+            
+            // Preenche os campos automaticamente
+            setUserFormData(prev => ({
+              ...prev,
+              address: addressData.address,
+              city: addressData.city,
+              state: addressData.state,
+              country: addressData.country
+            }));
+          } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+            // Opcional: mostrar mensagem de erro
+          } finally {
+            setIsLoadingCEP(false);
+          }
+        }
+      }}
+      className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+      placeholder="Digite o CEP"
+      maxLength={9}
+    />
+    {isLoadingCEP && (
+      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+        <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+      </div>
+    )}
+  </div>
+</div>
 
-                <div>
-                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    CEP
-                  </label>
-                  <input
-                    type="text"
-                    id="zipCode"
-                    name="zipCode"
-                    value={userFormData.zipCode}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    placeholder="Digite o CEP"
-                  />
-                </div>
+              {/* Linha 4: Endereço - Cidade */}
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Endereço
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={userFormData.address}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="Digite o endereço"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Cidade
+                </label>
+                <input
+                  type="text"
+                  id="city"
+                  name="city"
+                  value={userFormData.city}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="Digite a cidade"
+                />
+              </div>
+
+              {/* Linha 5: Estado - País */}
+              <div>
+                <label htmlFor="state" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Estado
+                </label>
+                <input
+                  type="text"
+                  id="state"
+                  name="state"
+                  value={userFormData.state}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="Digite o estado"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  País
+                </label>
+                <input
+                  type="text"
+                  id="country"
+                  name="country"
+                  value={userFormData.country}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="Digite o país"
+                />
+              </div>
+
+              {/* Linha 6: Perfil - Ativo */}
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Perfil*
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={userFormData.role}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Selecione</option>
+                  <option value="user">Usuário</option>
+                  <option value="admin">Administrador</option>
+                  <option value="manager">Gerente</option>
+                </select>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  name="isActive"
+                  checked={userFormData.isActive}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
+                />
+                <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                  Usuário ativo
+                </label>
               </div>
             </div>
 
