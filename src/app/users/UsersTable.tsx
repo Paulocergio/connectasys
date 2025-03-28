@@ -5,11 +5,11 @@ import AddUserModal from './AddUserModal'; // Importe o componente do modal
 import EditUserModal from './EditUserModal'; // Import the new EditUserModal
 
 
-import { Usuario  , UserResponse} from "../../lib/services/types/userTypes";  
+import { Usuario, UserResponse } from "../../lib/services/types/userTypes";
 
 
 const ElegantUsersTable = () => {
-  
+
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +19,11 @@ const ElegantUsersTable = () => {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false); // Estado para controlar a exibição do modal
   const [termoPesquisa, setTermoPesquisa] = useState(''); // Estado para a pesquisa
+
+
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
+  const [users, setUsers] = useState<User[]>([]);
   //EDITAR USUARIO
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -39,6 +44,30 @@ const ElegantUsersTable = () => {
       setLoading(false);
     }
   };
+
+
+
+
+  // Corrigindo a função handleDeleteUser
+  const handleDeleteUser = async (userId: string) => {  // Alterado para string
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) {
+      return;
+    }
+
+    setIsDeleting(Number(userId));  // Convertendo para número para a API
+    try {
+      await userService.deleteUser(Number(userId));  // Convertendo para número
+      setUsuarios(usuarios.filter(user => user.id !== userId));
+      // Opcional: Mostrar mensagem de sucesso
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao excluir usuário');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+
 
   const formatDate = (dateString: string | undefined): string => {
     if (!dateString) return "-";
@@ -147,34 +176,20 @@ const ElegantUsersTable = () => {
 
 
 
-  interface UpdatedUser {
-    id: string;
-    firstName?: string;
-    email?: string;
-    role?: string;
-    isActive?: boolean;
-    phoneNumber?: string;
-    gender?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    zipCode?: string;
-    createdAt?: string;
-  }
+
   const handleEditSuccess = (updatedUser: any): void => {
-    setUsuarios(prevUsuarios => 
-      prevUsuarios.map(user => 
-        user.id === updatedUser.id 
-          ? { 
-              ...user, // Mantém todos os dados originais
-              ...updatedUser, // Sobrescreve com os dados atualizados
-              // Garante que campos críticos não sejam undefined
-              firstName: updatedUser.firstName || user.firstName,
-              email: updatedUser.email || user.email,
-              role: updatedUser.role || user.role,
-              isActive: updatedUser.isActive !== undefined ? updatedUser.isActive : user.isActive
-            } 
+    setUsuarios(prevUsuarios =>
+      prevUsuarios.map(user =>
+        user.id === updatedUser.id
+          ? {
+            ...user, // Mantém todos os dados originais
+            ...updatedUser, // Sobrescreve com os dados atualizados
+            // Garante que campos críticos não sejam undefined
+            firstName: updatedUser.firstName || user.firstName,
+            email: updatedUser.email || user.email,
+            role: updatedUser.role || user.role,
+            isActive: updatedUser.isActive !== undefined ? updatedUser.isActive : user.isActive
+          }
           : user
       )
     );
@@ -294,15 +309,25 @@ const ElegantUsersTable = () => {
                             <span className="absolute inset-0 bg-gray-300 opacity-0 group-hover:opacity-20 transition-opacity"></span>
                             <Edit2 className="h-5 w-5 text-gray-600 group-hover:text-gray-800 transition-colors" />
                           </button>
+
+
                           <button
-                           
                             className="group relative inline-flex items-center justify-center p-2 overflow-hidden 
-        rounded-xl bg-rose-100 shadow-md transition-all duration-300 
-        hover:bg-rose-200 hover:shadow-lg active:scale-95"
+    rounded-xl bg-rose-100 shadow-md transition-all duration-300 
+    hover:bg-rose-200 hover:shadow-lg active:scale-95"
                             title="Excluir"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteUser(usuario.id);
+                            }}
+                            disabled={isDeleting === Number(usuario.id)} 
                           >
                             <span className="absolute inset-0 bg-rose-300 opacity-0 group-hover:opacity-20 transition-opacity"></span>
-                            <Trash2 className="h-5 w-5 text-rose-600 group-hover:text-rose-900 transition-colors" />
+                            {isDeleting === Number(usuario.id) ? ( 
+                              <RefreshCw className="h-5 w-5 text-rose-600 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-5 w-5 text-rose-600 group-hover:text-rose-900 transition-colors" />
+                            )}
                           </button>
                         </div>
                       </td>

@@ -67,6 +67,29 @@ export const userService = {
       }
     }
   },
+
+
+  deleteUser: async (userId: number): Promise<void> => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("Token não encontrado. Faça login novamente.");
+      }
+      
+      await api.delete(`/api/User/DeleteUserId/${userId}`);
+      
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          throw new Error("Sessão expirada. Faça login novamente.");
+        }
+        throw new Error(error.response?.data?.message || "Falha ao deletar usuário");
+      }
+      throw new Error("Erro desconhecido ao deletar usuário");
+    }
+  },
+
+
 };
 
 
