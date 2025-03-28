@@ -2,33 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { Edit2, Trash2, CheckCircle, XCircle, ChevronDown, RefreshCw, User, UserPlus, Search } from 'lucide-react';
 import { userService } from "../../lib/services/userService";
 import AddUserModal from './AddUserModal'; // Importe o componente do modal
+import EditUserModal from './EditUserModal'; // Import the new EditUserModal
+
+
+import { Usuario  , UserResponse} from "../../lib/services/types/userTypes";  
+
 
 const ElegantUsersTable = () => {
-  interface Usuario {
-    id: string;
-    firstName?: string;
-    email?: string;
-    role?: string;
-    isActive?: boolean;
-    phoneNumber?: string;
-    gender?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    zipCode?: string;
-    createdAt?: string;
-  }
+  
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [sortField, setSortField] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<keyof Usuario | null>(null);
   const [sortDirection, setSortDirection] = useState('asc');
-  const [expandedUser, setExpandedUser] = useState(null);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false); // Estado para controlar a exibição do modal
   const [termoPesquisa, setTermoPesquisa] = useState(''); // Estado para a pesquisa
+  //EDITAR USUARIO
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<Usuario | null>(null);
   useEffect(() => {
     fetchUsuarios();
   }, []);
@@ -37,16 +31,16 @@ const ElegantUsersTable = () => {
     try {
       setLoading(true);
       const data = await userService.getAllUsers();
-      setUsuarios(data);
+      setUsuarios(data.map(user => ({ ...user, id: String(user.id) })));
     } catch (err) {
       console.error("Erro ao carregar usuários:", err);
-      setError(err.message || "Falha ao carregar a lista de usuários");
+      setError(err instanceof Error ? err.message : "Falha ao carregar a lista de usuários");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | undefined): string => {
     if (!dateString) return "-";
     try {
       const date = new Date(dateString);
@@ -57,20 +51,12 @@ const ElegantUsersTable = () => {
     }
   };
 
-  const iniciarEdicao = (usuario: Usuario) => {
-    console.log("Iniciar edição de usuário:", usuario);
-    // Implementar lógica de edição
-  };
 
-  const deletarUsuario = async (id) => {
-    try {
-      await userService.deleteUser(id);
-      setUsuarios(usuarios.filter(user => user.id !== id));
-    } catch (error) {
-      console.error(`Erro ao excluir usuário ${id}:`, error);
-      alert(`Erro ao excluir usuário: ${error.message}`);
-    }
-  };
+  interface DeleteUserError extends Error {
+    message: string;
+  }
+
+
 
   const handleSort = (field: keyof Usuario) => {
     if (sortField === field) {
@@ -81,7 +67,11 @@ const ElegantUsersTable = () => {
     }
   };
 
-  const toggleUserDetails = (userId) => {
+  interface ToggleUserDetailsProps {
+    userId: string;
+  }
+
+  const toggleUserDetails = (userId: ToggleUserDetailsProps['userId']): void => {
     if (expandedUser === userId) {
       setExpandedUser(null);
     } else {
@@ -89,13 +79,16 @@ const ElegantUsersTable = () => {
     }
   };
 
-  // Função para adicionar um novo usuário à lista após criação
-  const handleAddUserSuccess = (newUser) => {
-    setUsuarios([...usuarios, newUser]);
+
+  const handleAddUserSuccess = (newUser: UserResponse) => {
+    const mappedUser: Usuario = { ...newUser, id: String(newUser.id) };
+    setUsuarios([...usuarios, mappedUser]);
   };
 
   // Função para lidar com alterações na pesquisa
-  const handlePesquisaChange = (event) => {
+  interface PesquisaChangeEvent extends React.ChangeEvent<HTMLInputElement> { }
+
+  const handlePesquisaChange = (event: PesquisaChangeEvent): void => {
     setTermoPesquisa(event.target.value);
   };
 
@@ -145,6 +138,47 @@ const ElegantUsersTable = () => {
     );
   }
 
+
+  // EDITAR USUARIO 
+  const iniciarEdicao = (usuario: Usuario) => {
+    setSelectedUserForEdit(usuario);
+    setIsEditModalOpen(true);
+  };
+
+
+
+  interface UpdatedUser {
+    id: string;
+    firstName?: string;
+    email?: string;
+    role?: string;
+    isActive?: boolean;
+    phoneNumber?: string;
+    gender?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+    createdAt?: string;
+  }
+  const handleEditSuccess = (updatedUser: any): void => {
+    setUsuarios(prevUsuarios => 
+      prevUsuarios.map(user => 
+        user.id === updatedUser.id 
+          ? { 
+              ...user, // Mantém todos os dados originais
+              ...updatedUser, // Sobrescreve com os dados atualizados
+              // Garante que campos críticos não sejam undefined
+              firstName: updatedUser.firstName || user.firstName,
+              email: updatedUser.email || user.email,
+              role: updatedUser.role || user.role,
+              isActive: updatedUser.isActive !== undefined ? updatedUser.isActive : user.isActive
+            } 
+          : user
+      )
+    );
+  };
   return (
     <div className="space-y-6">
       {/* Header com título e opções */}
@@ -261,12 +295,7 @@ const ElegantUsersTable = () => {
                             <Edit2 className="h-5 w-5 text-gray-600 group-hover:text-gray-800 transition-colors" />
                           </button>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`Tem certeza que deseja excluir o usuário ${usuario.firstName}?`)) {
-                                deletarUsuario(usuario.id);
-                              }
-                            }}
+                           
                             className="group relative inline-flex items-center justify-center p-2 overflow-hidden 
         rounded-xl bg-rose-100 shadow-md transition-all duration-300 
         hover:bg-rose-200 hover:shadow-lg active:scale-95"
@@ -341,7 +370,19 @@ const ElegantUsersTable = () => {
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleAddUserSuccess}
       />
+
+
+      <EditUserModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={selectedUserForEdit}
+        onSuccess={handleEditSuccess}
+      />
+
+
     </div>
+
+
   );
 };
 

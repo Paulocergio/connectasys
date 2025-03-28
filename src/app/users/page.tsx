@@ -30,7 +30,7 @@ export default function Page() {
   
   // Estado para o modal de editar usuário
   const [modalEditar, setModalEditar] = useState(false);
-  const [usuarioEmEdicao, setUsuarioEmEdicao] = useState(null);
+  const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
 
   // Efeito para filtrar usuários quando o termo de pesquisa muda
   useEffect(() => {
@@ -58,7 +58,13 @@ export default function Page() {
   );
 
   // Funções de navegação de páginas
-  const handlePaginacao = {
+  interface HandlePaginacao {
+    irParaPaginaAnterior: () => void;
+    irParaProximaPagina: () => void;
+    irParaPagina: (numeroPagina: number) => void;
+  }
+
+  const handlePaginacao: HandlePaginacao = {
     irParaPaginaAnterior: () => {
       if (paginaAtual > 1) {
         setPaginaAtual(paginaAtual - 1);
@@ -69,7 +75,7 @@ export default function Page() {
         setPaginaAtual(paginaAtual + 1);
       }
     },
-    irParaPagina: (numeroPagina) => {
+    irParaPagina: (numeroPagina: number) => {
       if (numeroPagina >= 1 && numeroPagina <= totalPaginas) {
         setPaginaAtual(numeroPagina);
       }
@@ -82,7 +88,13 @@ export default function Page() {
   };
 
   // Função para adicionar um novo usuário
-  const adicionarUsuario = (novoUsuario) => {
+  interface NovoUsuario {
+    nome: string;
+    email: string;
+    cargo: string;
+  }
+
+  const adicionarUsuario = (novoUsuario: NovoUsuario): void => {
     if (novoUsuario.nome && novoUsuario.email && novoUsuario.cargo) {
       setUsuarios([
         ...usuarios,
@@ -96,16 +108,30 @@ export default function Page() {
   };
 
   // Função para iniciar a edição de um usuário
-  const iniciarEdicao = (usuario) => {
+  interface Usuario {
+    id: number;
+    nome: string;
+    email: string;
+    cargo: string;
+  }
+
+  const iniciarEdicao = (usuario: Usuario): void => {
     setUsuarioEmEdicao({ ...usuario });
     setModalEditar(true);
   };
 
   // Função para salvar as alterações de um usuário editado
-  const salvarEdicao = (usuarioEditado) => {
+  interface UsuarioEditado {
+    id: number;
+    nome: string;
+    email: string;
+    cargo: string;
+  }
+
+  const salvarEdicao = (usuarioEditado: UsuarioEditado): void => {
     if (usuarioEditado && usuarioEditado.nome && usuarioEditado.email && usuarioEditado.cargo) {
       setUsuarios(
-        usuarios.map(usuario => 
+        usuarios.map((usuario: Usuario) => 
           usuario.id === usuarioEditado.id ? usuarioEditado : usuario
         )
       );
@@ -115,8 +141,12 @@ export default function Page() {
   };
 
   // Função para deletar um usuário
-  const deletarUsuario = (id) => {
-    setUsuarios(usuarios.filter(usuario => usuario.id !== id));
+  interface DeletarUsuario {
+    (id: number): void;
+  }
+
+  const deletarUsuario: DeletarUsuario = (id) => {
+    setUsuarios(usuarios.filter((usuario: Usuario) => usuario.id !== id));
   };
 
   return (
