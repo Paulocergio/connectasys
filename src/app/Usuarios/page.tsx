@@ -95,7 +95,7 @@ export default function Page() {
         ) : (
           <>
             <UsersTable
-              usuarios={usuariosPaginados}
+              usuarios={usuariosPaginados.map(usuario => ({ ...usuario, id: usuario.id.toString() }))}
               iniciarEdicao={iniciarEdicao}
               deletarUsuario={deletarUsuario}
             />

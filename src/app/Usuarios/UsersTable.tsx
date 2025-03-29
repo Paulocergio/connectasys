@@ -19,6 +19,9 @@ import { Usuario, UserResponse } from "../../lib/services/types/userTypes";
 
 
 
+ 
+
+
 const ElegantUsersTable = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,7 +166,14 @@ const ElegantUsersTable = () => {
   const iniciarEdicao = (usuario: Usuario) => {
     setSelectedUserForEdit(usuario);
     setIsEditModalOpen(true);
-  };
+  }
+
+
+
+
+
+
+
 
   const handleEditSuccess = (updatedUser: any): void => {
     setUsuarios((prevUsuarios) =>
@@ -458,6 +468,10 @@ const ElegantUsersTable = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleAddUserSuccess}
+        onSave={(novoUsuario) => {
+          const newUser: Usuario = { ...novoUsuario, id: String(Date.now()) };
+          setUsuarios((prevUsuarios) => [...prevUsuarios, newUser]);
+        }}
       />
 
       <EditUserModal
