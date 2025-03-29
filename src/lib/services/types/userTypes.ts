@@ -5,6 +5,12 @@ export interface User {
     role: string;
 }
 
+
+
+
+
+
+
 export interface LoginCredentials {
     email: string;
     password: string;
@@ -41,7 +47,7 @@ export interface GetAllUser {
     firstName: string;
     email: string;
     phoneNumber: string;
-    PasswordHash: string; // Ajustado para corresponder ao backend
+    PasswordHash: string; 
     gender: string;
     address: string;
     city: string;
@@ -54,7 +60,6 @@ export interface GetAllUser {
 }
 
 
-////////////////
 
  export interface AddUserModalProps {
   isOpen: boolean;
@@ -96,6 +101,8 @@ export interface UserResponse {
 }
 
 
+
+
 // Em user.types.ts
 export interface UserPayload {
     firstName: string;
@@ -130,6 +137,9 @@ export interface UserPayload {
     zipCode?: string;
     createdAt?: string;
   }
+
+
+   export interface PesquisaChangeEvent extends React.ChangeEvent<HTMLInputElement> { }
 
 
   

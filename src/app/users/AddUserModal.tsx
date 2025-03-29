@@ -2,29 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { userService } from "../../lib/services/userService";
 import bcrypt from 'bcryptjs';
-
 import { cepService } from '../../lib/services/cepService ';
-
-
-
-
-import { UserFormData, AddUserModalProps, UserResponse } from "../../lib/services/types/userTypes";
-
-
-
-
-
+import { UserFormData, AddUserModalProps, UserResponse, UserPayload } from "../../lib/services/types/userTypes";
 interface HandleChangeEvent extends React.ChangeEvent<HTMLInputElement | HTMLSelectElement> { }
-
 const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [shouldShowPassword, setShouldShowPassword] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
-
-
-
-
   const [userFormData, setUserFormData] = useState<UserFormData>({
     firstName: "",
     email: "",
@@ -57,9 +42,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
       [name]: type === 'checkbox' ? checked : value,
     });
   };
-
-
-  // Adicione esta função no seu componente
   const formatCEP = (value: string) => {
     return value
       .replace(/\D/g, '')
@@ -67,11 +49,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
       .slice(0, 9);
   };
 
-  // Atualize o handleCEPChange:
   const handleCEPChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatCEP(e.target.value);
-
-    // Atualiza o campo CEP com formatação
     handleInputChange({
       ...e,
       target: {
@@ -79,13 +58,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
         value: formattedValue
       }
     });
-
-    // Busca quando tiver 8 dígitos (sem o hífen)
     if (formattedValue.replace(/\D/g, '').length === 8) {
       setIsLoadingCEP(true);
       try {
         const addressData = await cepService.fetchAddressByCEP(formattedValue.replace(/\D/g, ''));
-        // ... restante do código ...
       } catch (error) {
         console.error('Erro ao buscar CEP:', error);
       } finally {
@@ -93,44 +69,29 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
       }
     }
   };
+
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
 
-    if (!userFormData.firstName.trim()) {
-      alert("Por favor, preencha o campo Nome.");
-      return;
-    }
-    if (!userFormData.email.trim() || !/\S+@\S+\.\S+/.test(userFormData.email)) {
-      alert("Por favor, preencha o campo Email com um email válido.");
-      return;
-    }
-    if (!userFormData.passwordHash.trim()) {
-      alert("Por favor, preencha o campo Senha.");
-      return;
-    }
-    if (userFormData.passwordHash.length < 8) {
-      alert("A senha deve ter no mínimo 8 caracteres.");
-      return;
-    }
-    if (!userFormData.role) {
-      alert("Por favor, selecione o Perfil.");
-      return;
-    }
-
     try {
       setIsLoading(true);
-      const hashedPassword = await bcrypt.hash(userFormData.passwordHash, 10);
-      const userPayload = {
+      const userPayload: UserPayload = {
         ...userFormData,
-        passwordHash: hashedPassword,
+        PasswordHash: userFormData.passwordHash
+          ? await bcrypt.hash(userFormData.passwordHash, 10)
+          : ""
       };
-      const createdUser = await userService.CreateOrUpdateUser(userPayload);
-      onSuccess(createdUser);
-      resetForm();
+      const updatedUser: UserResponse = await userService.CreateOrUpdateUser(userPayload);
+      const completeUserData = {
+        ...userFormData,
+        ...updatedUser,
+        id: updatedUser.id
+      };
+      onSuccess(completeUserData);
       onClose();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-      alert(`Erro ao adicionar usuário: ${errorMessage}`);
+      console.error('Erro ao atualizar usuário:', error);
+      alert(`Erro ao atualizar usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +140,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
 
           <form onSubmit={handleFormSubmit} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Linha 1: Nome - Email */}
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
                   Nome*
@@ -212,7 +172,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
                 />
               </div>
 
-              {/* Linha 2: Senha - Telefone */}
               <div>
                 <label htmlFor="passwordHash" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Senha*
@@ -256,7 +215,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
                 />
               </div>
 
-              {/* Linha 3: Gênero - CEP */}
               <div>
                 <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Gênero
@@ -277,63 +235,58 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
               </div>
 
               <div>
-  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-    CEP
-  </label>
-  <div className="relative">
-    <input
-      type="text"
-      id="zipCode"
-      name="zipCode"
-      value={userFormData.zipCode}
-      onChange={async (e) => {
-        // Formata o CEP (XXXXX-XXX)
-        const formattedValue = e.target.value
-          .replace(/\D/g, '')
-          .replace(/(\d{5})(\d)/, '$1-$2')
-          .slice(0, 9);
-        
-        // Atualiza o campo CEP
-        setUserFormData(prev => ({
-          ...prev,
-          zipCode: formattedValue
-        }));
+                <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  CEP
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="zipCode"
+                    name="zipCode"
+                    value={userFormData.zipCode}
+                    onChange={async (e) => {
+                
+                      const formattedValue = e.target.value
+                        .replace(/\D/g, '')
+                        .replace(/(\d{5})(\d)/, '$1-$2')
+                        .slice(0, 9);
 
-        // Busca o endereço quando o CEP estiver completo (8 dígitos)
-        if (formattedValue.replace(/\D/g, '').length === 8) {
-          try {
-            setIsLoadingCEP(true);
-            const addressData = await cepService.fetchAddressByCEP(formattedValue.replace(/\D/g, ''));
-            
-            // Preenche os campos automaticamente
-            setUserFormData(prev => ({
-              ...prev,
-              address: addressData.address,
-              city: addressData.city,
-              state: addressData.state,
-              country: addressData.country
-            }));
-          } catch (error) {
-            console.error("Erro ao buscar CEP:", error);
-            // Opcional: mostrar mensagem de erro
-          } finally {
-            setIsLoadingCEP(false);
-          }
-        }
-      }}
-      className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-      placeholder="Digite o CEP"
-      maxLength={9}
-    />
-    {isLoadingCEP && (
-      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-        <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-      </div>
-    )}
-  </div>
-</div>
+                    
+                      setUserFormData(prev => ({
+                        ...prev,
+                        zipCode: formattedValue
+                      }));
 
-              {/* Linha 4: Endereço - Cidade */}
+                
+                      if (formattedValue.replace(/\D/g, '').length === 8) {
+                        try {
+                          setIsLoadingCEP(true);
+                          const addressData = await cepService.fetchAddressByCEP(formattedValue.replace(/\D/g, ''));
+                          setUserFormData(prev => ({
+                            ...prev,
+                            address: addressData.address,
+                            city: addressData.city,
+                            state: addressData.state,
+                            country: addressData.country
+                          }));
+                        } catch (error) {
+                          console.error("Erro ao buscar CEP:", error);
+                        } finally {
+                          setIsLoadingCEP(false);
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    placeholder="Digite o CEP"
+                    maxLength={9}
+                  />
+                  {isLoadingCEP && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Endereço
@@ -362,9 +315,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
                   className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Digite a cidade"
                 />
-              </div>
-
-              {/* Linha 5: Estado - País */}
+              </div>   
               <div>
                 <label htmlFor="state" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Estado
@@ -393,9 +344,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
                   className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-700/30 border border-gray-300/70 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Digite o país"
                 />
-              </div>
-
-              {/* Linha 6: Perfil - Ativo */}
+              </div>  
               <div>
                 <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Perfil*

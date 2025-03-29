@@ -6,75 +6,58 @@ import UsersTable from './UsersTable';
 import UsersPagination from './UsersPagination';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
-
-const initialUsers = [
-  { id: 11, nome: 'Ricardo Almeida', email: 'ricardo.almeida@empresa.com', cargo: 'Arquiteto de Software' },
-  { id: 12, nome: 'Sofia Ribeiro', email: 'sofia.ribeiro@empresa.com', cargo: 'Desenvolvedora Mobile' },
-  // ... outros usuários
-];
+import { User } from '@/lib/services/types/userTypes';
 
 export default function Page() {
-  // Estado para armazenar a lista de usuários
-  const [usuarios, setUsuarios] = useState(initialUsers);
-  
-  // Estado para paginação
+  const [usuarios, setUsuarios] = useState<User[]>([]);
+  const [carregando, setCarregando] = useState(true);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const registrosPorPagina = 5;
-
-  // Estado para pesquisa
   const [termoPesquisa, setTermoPesquisa] = useState('');
-  const [usuariosFiltrados, setUsuariosFiltrados] = useState([...usuarios]);
-
-  // Estado para o modal de adicionar usuário
+  const [usuariosFiltrados, setUsuariosFiltrados] = useState<User[]>([]);
   const [modalAdicionar, setModalAdicionar] = useState(false);
-  
-  // Estado para o modal de editar usuário
   const [modalEditar, setModalEditar] = useState(false);
-  const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
+  const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<User | null>(null);
 
-  // Efeito para filtrar usuários quando o termo de pesquisa muda
+  useEffect(() => {
+    const carregarUsuarios = async () => {
+      try {
+        const data: User[] = [];
+        setUsuarios(data);
+        setUsuariosFiltrados(data);
+      } catch (error) {
+        console.error("Erro ao carregar usuários:", error);
+      } finally {
+        setCarregando(false);
+      }
+    };
+
+    carregarUsuarios();
+  }, []);
+
   useEffect(() => {
     if (termoPesquisa.trim() === '') {
       setUsuariosFiltrados([...usuarios]);
     } else {
       const resultados = usuarios.filter(usuario => 
-        usuario.nome.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+        usuario.name.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
         usuario.email.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
-        usuario.cargo.toLowerCase().includes(termoPesquisa.toLowerCase())
+        usuario.role.toLowerCase().includes(termoPesquisa.toLowerCase())
       );
       setUsuariosFiltrados(resultados);
     }
-    // Voltar para a primeira página quando realizar uma pesquisa
     setPaginaAtual(1);
   }, [termoPesquisa, usuarios]);
 
-  // Calcular total de páginas baseado nos resultados filtrados
   const totalPaginas = Math.ceil(usuariosFiltrados.length / registrosPorPagina);
-  
-  // Obter usuários da página atual
   const usuariosPaginados = usuariosFiltrados.slice(
     (paginaAtual - 1) * registrosPorPagina,
     paginaAtual * registrosPorPagina
   );
 
-  // Funções de navegação de páginas
-  interface HandlePaginacao {
-    irParaPaginaAnterior: () => void;
-    irParaProximaPagina: () => void;
-    irParaPagina: (numeroPagina: number) => void;
-  }
-
-  const handlePaginacao: HandlePaginacao = {
-    irParaPaginaAnterior: () => {
-      if (paginaAtual > 1) {
-        setPaginaAtual(paginaAtual - 1);
-      }
-    },
-    irParaProximaPagina: () => {
-      if (paginaAtual < totalPaginas) {
-        setPaginaAtual(paginaAtual + 1);
-      }
-    },
+  const handlePaginacao = {
+    irParaPaginaAnterior: () => paginaAtual > 1 && setPaginaAtual(paginaAtual - 1),
+    irParaProximaPagina: () => paginaAtual < totalPaginas && setPaginaAtual(paginaAtual + 1),
     irParaPagina: (numeroPagina: number) => {
       if (numeroPagina >= 1 && numeroPagina <= totalPaginas) {
         setPaginaAtual(numeroPagina);
@@ -82,106 +65,63 @@ export default function Page() {
     }
   };
 
-  // Função para lidar com mudanças no campo de pesquisa
-  const handlePesquisaChange = (e) => {
-    setTermoPesquisa(e.target.value);
+
+  const adicionarUsuario = (novoUsuario: Omit<User, 'id'>) => {
+    const novoId = usuarios.length > 0 ? Math.max(...usuarios.map(u => u.id)) + 1 : 1;
+    const usuarioCompleto: User = { id: novoId, ...novoUsuario };
+    setUsuarios([...usuarios, usuarioCompleto]);
+    setModalAdicionar(false);
   };
 
-  // Função para adicionar um novo usuário
-  interface NovoUsuario {
-    nome: string;
-    email: string;
-    cargo: string;
-  }
-
-  const adicionarUsuario = (novoUsuario: NovoUsuario): void => {
-    if (novoUsuario.nome && novoUsuario.email && novoUsuario.cargo) {
-      setUsuarios([
-        ...usuarios,
-        {
-          id: usuarios.length + 1,
-          ...novoUsuario
-        }
-      ]);
-      setModalAdicionar(false);
-    }
-  };
-
-  // Função para iniciar a edição de um usuário
-  interface Usuario {
-    id: number;
-    nome: string;
-    email: string;
-    cargo: string;
-  }
-
-  const iniciarEdicao = (usuario: Usuario): void => {
-    setUsuarioEmEdicao({ ...usuario });
+  const iniciarEdicao = (usuario: User) => {
+    setUsuarioEmEdicao(usuario);
     setModalEditar(true);
   };
 
-  // Função para salvar as alterações de um usuário editado
-  interface UsuarioEditado {
-    id: number;
-    nome: string;
-    email: string;
-    cargo: string;
-  }
-
-  const salvarEdicao = (usuarioEditado: UsuarioEditado): void => {
-    if (usuarioEditado && usuarioEditado.nome && usuarioEditado.email && usuarioEditado.cargo) {
-      setUsuarios(
-        usuarios.map((usuario: Usuario) => 
-          usuario.id === usuarioEditado.id ? usuarioEditado : usuario
-        )
-      );
-      setModalEditar(false);
-      setUsuarioEmEdicao(null);
-    }
+  const salvarEdicao = (usuarioEditado: User) => {
+    setUsuarios(usuarios.map(u => u.id === usuarioEditado.id ? usuarioEditado : u));
+    setModalEditar(false);
   };
 
-  // Função para deletar um usuário
-  interface DeletarUsuario {
-    (id: number): void;
-  }
-
-  const deletarUsuario: DeletarUsuario = (id) => {
-    setUsuarios(usuarios.filter((usuario: Usuario) => usuario.id !== id));
+  const deletarUsuario = (id: number) => {
+    setUsuarios(usuarios.filter(u => u.id !== id));
   };
 
   return (
     <SidebarWrapper>
       <div className="p-4 w-full bg-gray-50">
-       
+        {carregando ? (
+          <div>Carregando usuários...</div>
+        ) : (
+          <>
+            <UsersTable
+              usuarios={usuariosPaginados}
+              iniciarEdicao={iniciarEdicao}
+              deletarUsuario={deletarUsuario}
+            />
 
-        <UsersTable
-          usuarios={usuariosPaginados}
-          iniciarEdicao={iniciarEdicao}
-          deletarUsuario={deletarUsuario}
-        />
-
-        <UsersPagination
-          paginaAtual={paginaAtual}
-          totalPaginas={totalPaginas}
-          usuariosFiltrados={usuariosFiltrados}
-          registrosPorPagina={registrosPorPagina}
-          handlePaginacao={handlePaginacao}
-        />
-
-        {modalAdicionar && (
-          <AddUserModal
-            setModalAdicionar={setModalAdicionar}
-            adicionarUsuario={adicionarUsuario}
-          />
+            <UsersPagination
+              paginaAtual={paginaAtual}
+              totalPaginas={totalPaginas}
+              usuariosFiltrados={usuariosFiltrados}
+              registrosPorPagina={registrosPorPagina}
+              handlePaginacao={handlePaginacao}
+            />
+          </>
         )}
 
-        {modalEditar && usuarioEmEdicao && (
-          <EditUserModal
-            setModalEditar={setModalEditar}
-            usuarioEmEdicao={usuarioEmEdicao}
-            salvarEdicao={salvarEdicao}
-          />
-        )}
+        <AddUserModal
+          isOpen={modalAdicionar}
+          onClose={() => setModalAdicionar(false)}
+          onSave={adicionarUsuario}
+        />
+
+        <EditUserModal
+          isOpen={modalEditar}
+          onClose={() => setModalEditar(false)}
+          usuario={usuarioEmEdicao}
+          onSave={salvarEdicao}
+        />
       </div>
     </SidebarWrapper>
   );

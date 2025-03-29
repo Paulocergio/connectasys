@@ -11,9 +11,9 @@ import {
   Search,
 } from "lucide-react";
 import { userService } from "../../lib/services/userService";
-import AddUserModal from "./AddUserModal"; // Importe o componente do modal
-import EditUserModal from "./EditUserModal"; // Import the new EditUserModal
-import DeleteConfirmationModal from "./DeleteConfirmationModal"; // Import the new EditUserModal
+import AddUserModal from "./AddUserModal";
+import EditUserModal from "./EditUserModal";
+import DeleteConfirmationModal from "./DeleteConfirmationModal";
 
 import { Usuario, UserResponse } from "../../lib/services/types/userTypes";
 
@@ -24,14 +24,9 @@ const ElegantUsersTable = () => {
   const [sortField, setSortField] = useState<keyof Usuario | null>(null);
   const [sortDirection, setSortDirection] = useState("asc");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false); // Estado para controlar a exibição do modal
-  const [termoPesquisa, setTermoPesquisa] = useState(""); // Estado para a pesquisa
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [termoPesquisa, setTermoPesquisa] = useState("");
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
-
-  const [users, setUsers] = useState<User[]>([]);
-  //EDITAR USUARIO
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUserForEdit, setSelectedUserForEdit] =
     useState<Usuario | null>(null);
@@ -71,10 +66,8 @@ const ElegantUsersTable = () => {
     try {
       await userService.deleteUser(Number(userToDelete));
       setUsuarios(usuarios.filter((user) => user.id !== userToDelete));
-      // Opcional: Mostrar mensagem de sucesso com toast
     } catch (error) {
-      console.error("Erro ao excluir usuário:", error);
-      // Opcional: Mostrar mensagem de erro com toast
+      console.error("Erro ao excluir usuário:", error);   
     } finally {
       setIsDeleting(null);
       setDeleteModalOpen(false);
@@ -88,15 +81,10 @@ const ElegantUsersTable = () => {
       const date = new Date(dateString);
       return date.toLocaleDateString();
     } catch (e) {
-      console.error("Erro ao formatar data:", e);
+    
       return dateString || "-";
     }
   };
-
-  interface DeleteUserError extends Error {
-    message: string;
-  }
-
   const handleSort = (field: keyof Usuario) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -106,12 +94,8 @@ const ElegantUsersTable = () => {
     }
   };
 
-  interface ToggleUserDetailsProps {
-    userId: string;
-  }
-
   const toggleUserDetails = (
-    userId: ToggleUserDetailsProps["userId"]
+    userId: Usuario["id"]
   ): void => {
     if (expandedUser === userId) {
       setExpandedUser(null);
@@ -124,15 +108,10 @@ const ElegantUsersTable = () => {
     const mappedUser: Usuario = { ...newUser, id: String(newUser.id) };
     setUsuarios([...usuarios, mappedUser]);
   };
-
-  // Função para lidar com alterações na pesquisa
-  interface PesquisaChangeEvent extends React.ChangeEvent<HTMLInputElement> { }
-
-  const handlePesquisaChange = (event: PesquisaChangeEvent): void => {
+  const handlePesquisaChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     setTermoPesquisa(event.target.value);
   };
 
-  // Filtrar usuários baseado no termo de pesquisa
   const usuariosFiltrados = usuarios.filter(
     (usuario) =>
       usuario.firstName?.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
@@ -140,7 +119,6 @@ const ElegantUsersTable = () => {
       usuario.role?.toLowerCase().includes(termoPesquisa.toLowerCase())
   );
 
-  // Ordenar usuários filtrados
   const sortedUsuarios = [...usuariosFiltrados].sort((a, b) => {
     if (!sortField) return 0;
 
@@ -179,7 +157,7 @@ const ElegantUsersTable = () => {
     );
   }
 
-  // EDITAR USUARIO
+
   const iniciarEdicao = (usuario: Usuario) => {
     setSelectedUserForEdit(usuario);
     setIsEditModalOpen(true);
@@ -190,9 +168,8 @@ const ElegantUsersTable = () => {
       prevUsuarios.map((user) =>
         user.id === updatedUser.id
           ? {
-            ...user, // Mantém todos os dados originais
-            ...updatedUser, // Sobrescreve com os dados atualizados
-            // Garante que campos críticos não sejam undefined
+            ...user, 
+            ...updatedUser, 
             firstName: updatedUser.firstName || user.firstName,
             email: updatedUser.email || user.email,
             role: updatedUser.role || user.role,
@@ -207,7 +184,6 @@ const ElegantUsersTable = () => {
   };
   return (
     <div className="space-y-6">
-      {/* Header com título e opções */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">
           Gerenciamento de Usuários
@@ -236,7 +212,6 @@ const ElegantUsersTable = () => {
         </div>
       </div>
 
-      {/* Tabela de usuários */}
       <div className="bg-white rounded-lg shadow w-full">
         <div className="overflow-x-auto">
           <table className="w-full">
