@@ -103,43 +103,43 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     }));
   };
 
-  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-    try {
-      setIsLoading(true);
+  // Remova esta importação:
+// import bcrypt from 'bcryptjs';
 
+// E modifique o handleFormSubmit para:
+const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  event.preventDefault();
+  try {
+    setIsLoading(true);
 
-      const userPayload = {
-        ...userFormData,
+    const userPayload = {
+      ...userFormData,
+      // Envia a senha em texto plano (o backend fará o hash)
+      PasswordHash: userFormData.passwordHash || user?.PasswordHash
+    };
 
-        PasswordHash: userFormData.passwordHash
-          ? await bcrypt.hash(userFormData.passwordHash, 10)
-          : user.PasswordHash
-      };
-
-
-      if ('passwordHash' in userPayload) {
-        delete (userPayload as any).passwordHash;
-      }
-
-      const updatedUser = await userService.CreateOrUpdateUser(userPayload);
-
-      const completeUserData = {
-        ...user,
-        ...updatedUser,
-        id: user.id
-      };
-
-      onSuccess(completeUserData);
-      onClose();
-    } catch (error) {
-      console.error('Erro ao atualizar usuário:', error);
-      alert(`Erro ao atualizar usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    } finally {
-      setIsLoading(false);
+    // Remove o campo não hasheado do payload
+    if ('passwordHash' in userPayload) {
+      delete (userPayload as any).passwordHash;
     }
-  };
 
+    const updatedUser = await userService.CreateOrUpdateUser(userPayload);
+
+    const completeUserData = {
+      ...user,
+      ...updatedUser,
+      id: user.id
+    };
+
+    onSuccess(completeUserData);
+    onClose();
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error);
+    alert(`Erro ao atualizar usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const resetForm = () => {
     setUserFormData({
       firstName: "",

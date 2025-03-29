@@ -72,15 +72,14 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-
+  
     try {
       setIsLoading(true);
       const userPayload: UserPayload = {
         ...userFormData,
-        PasswordHash: userFormData.passwordHash
-          ? await bcrypt.hash(userFormData.passwordHash, 10)
-          : ""
+        password: userFormData.passwordHash // Envia a senha em texto plano (via HTTPS)
       };
+      
       const updatedUser: UserResponse = await userService.CreateOrUpdateUser(userPayload);
       const completeUserData = {
         ...userFormData,

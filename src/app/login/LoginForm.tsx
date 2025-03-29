@@ -25,30 +25,41 @@ export function LoginForm({ onSubmit, error, success }: LoginFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validação básica
+    if (!email || !password) {
+      setLocalError('Por favor, preencha todos os campos');
+      return;
+    }
+    
     setIsLoading(true);
     setLocalError('');
-
-    
-    const payload = { email, password };
-    console.log('Payload sendo enviado:', payload);
-    
+    setLocalSuccess('');
+  
     try {
       const response = await userService.login({ email, password });
-      setLocalSuccess(response.message);
       
-      // Store user information and token in localStorage or a state management solution
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      
-      // Redirect after successful login
-      window.location.href = '/dashboard';
+      if (response.token && response.user) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setLocalSuccess('Login realizado com sucesso!');
+        
+        // Redireciona após um pequeno delay para mostrar a mensagem
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      } else {
+        throw new Error('Resposta de login inválida');
+      }
     } catch (err: any) {
-      setLocalError(err.response?.data?.message || 'Erro ao realizar login');
+      const errorMessage = err.message || 'Erro ao realizar login';
+      setLocalError(errorMessage);
+      console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   return (
     <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-0">
       <motion.div
