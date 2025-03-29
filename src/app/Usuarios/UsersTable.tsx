@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import {
   Edit2,
@@ -9,18 +11,15 @@ import {
   User,
   UserPlus,
   Search,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { userService } from "../../lib/services/userService";
 import AddUserModal from "./AddUserModal";
 import EditUserModal from "./EditUserModal";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
-
 import { Usuario, UserResponse } from "../../lib/services/types/userTypes";
-
-
-
- 
-
+import UsersPagination from "./UsersPagination";
 
 const ElegantUsersTable = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -33,8 +32,12 @@ const ElegantUsersTable = () => {
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedUserForEdit, setSelectedUserForEdit] =
-    useState<Usuario | null>(null);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<Usuario | null>(null);
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
   useEffect(() => {
     fetchUsuarios();
   }, []);
@@ -59,64 +62,10 @@ const ElegantUsersTable = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
-  const openDeleteModal = (userId: string) => {
-    setUserToDelete(userId);
-    setDeleteModalOpen(true);
-  };
-
-  const handleDeleteUser = async () => {
-    if (!userToDelete) return;
-
-    setIsDeleting(Number(userToDelete));
-    try {
-      await userService.deleteUser(Number(userToDelete));
-      setUsuarios(usuarios.filter((user) => user.id !== userToDelete));
-    } catch (error) {
-      console.error("Erro ao excluir usuário:", error);   
-    } finally {
-      setIsDeleting(null);
-      setDeleteModalOpen(false);
-      setUserToDelete(null);
-    }
-  };
-
-  const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString();
-    } catch (e) {
-    
-      return dateString || "-";
-    }
-  };
-  const handleSort = (field: keyof Usuario) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
-  const toggleUserDetails = (
-    userId: Usuario["id"]
-  ): void => {
-    if (expandedUser === userId) {
-      setExpandedUser(null);
-    } else {
-      setExpandedUser(userId);
-    }
-  };
-
-  const handleAddUserSuccess = (newUser: UserResponse) => {
-    const mappedUser: Usuario = { ...newUser, id: String(newUser.id) };
-    setUsuarios([...usuarios, mappedUser]);
-  };
-  const handlePesquisaChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    setTermoPesquisa(event.target.value);
-  };
-
+  // Cálculos de paginação
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  
   const usuariosFiltrados = usuarios.filter(
     (usuario) =>
       usuario.firstName?.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
@@ -130,12 +79,88 @@ const ElegantUsersTable = () => {
     const aValue = String(a[sortField] || "");
     const bValue = String(b[sortField] || "");
 
-    if (sortDirection === "asc") {
-      return aValue.localeCompare(bValue);
-    } else {
-      return bValue.localeCompare(aValue);
-    }
+    return sortDirection === "asc" 
+      ? aValue.localeCompare(bValue) 
+      : bValue.localeCompare(aValue);
   });
+
+  const currentItems = sortedUsuarios.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(sortedUsuarios.length / itemsPerPage);
+
+  // Funções de navegação
+  const goToPreviousPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
+  const goToNextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+  const goToPage = (page: number) => setCurrentPage(page);
+
+  const openDeleteModal = (userId: string) => {
+    setUserToDelete(userId);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    setIsDeleting(Number(userToDelete));
+    try {
+      await userService.deleteUser(Number(userToDelete));
+      setUsuarios(usuarios.filter((user) => user.id !== userToDelete));
+    } catch (error) {
+      console.error("Erro ao excluir usuário:", error);
+    } finally {
+      setIsDeleting(null);
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
+    }
+  };
+
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (e) {
+      return dateString;
+    }
+  };
+
+  const handleSort = (field: keyof Usuario) => {
+    setSortDirection(sortField === field && sortDirection === "asc" ? "desc" : "asc");
+    setSortField(field);
+  };
+
+  const toggleUserDetails = (userId: Usuario["id"]): void => {
+    setExpandedUser(expandedUser === userId ? null : userId);
+  };
+
+  const handleAddUserSuccess = (newUser: UserResponse) => {
+    setUsuarios([...usuarios, { ...newUser, id: String(newUser.id) }]);
+  };
+
+  const handlePesquisaChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    setTermoPesquisa(event.target.value);
+    setCurrentPage(1); // Resetar para a primeira página ao pesquisar
+  };
+
+  const iniciarEdicao = (usuario: Usuario) => {
+    setSelectedUserForEdit(usuario);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = (updatedUser: any): void => {
+    setUsuarios(prevUsuarios =>
+      prevUsuarios.map(user =>
+        user.id === updatedUser.id
+          ? {
+              ...user,
+              ...updatedUser,
+              firstName: updatedUser.firstName || user.firstName,
+              email: updatedUser.email || user.email,
+              role: updatedUser.role || user.role,
+              isActive: updatedUser.isActive !== undefined ? updatedUser.isActive : user.isActive,
+            }
+          : user
+      )
+    );
+  };
 
   if (loading) {
     return (
@@ -153,7 +178,7 @@ const ElegantUsersTable = () => {
         <p className="text-gray-600 font-medium mb-2">Algo deu errado</p>
         <p className="text-gray-500 mb-4 text-sm">{error}</p>
         <button
-          onClick={() => fetchUsuarios()}
+          onClick={fetchUsuarios}
           className="px-4 py-2 flex items-center gap-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors mx-auto"
         >
           <RefreshCw className="h-4 w-4" /> Tentar novamente
@@ -162,44 +187,10 @@ const ElegantUsersTable = () => {
     );
   }
 
-
-  const iniciarEdicao = (usuario: Usuario) => {
-    setSelectedUserForEdit(usuario);
-    setIsEditModalOpen(true);
-  }
-
-
-
-
-
-
-
-
-  const handleEditSuccess = (updatedUser: any): void => {
-    setUsuarios((prevUsuarios) =>
-      prevUsuarios.map((user) =>
-        user.id === updatedUser.id
-          ? {
-            ...user, 
-            ...updatedUser, 
-            firstName: updatedUser.firstName || user.firstName,
-            email: updatedUser.email || user.email,
-            role: updatedUser.role || user.role,
-            isActive:
-              updatedUser.isActive !== undefined
-                ? updatedUser.isActive
-                : user.isActive,
-          }
-          : user
-      )
-    );
-  };
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Gerenciamento de Usuários
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-800">Gerenciamento de Usuários</h1>
         <div className="flex items-center gap-4">
           <div className="relative">
             <input
@@ -209,10 +200,7 @@ const ElegantUsersTable = () => {
               onChange={handlePesquisaChange}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all w-64"
             />
-            <Search
-              className="absolute left-3 top-2.5 text-gray-400"
-              size={18}
-            />
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -237,8 +225,9 @@ const ElegantUsersTable = () => {
                     Usuário
                     {sortField === "firstName" && (
                       <ChevronDown
-                        className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === "desc" ? "transform rotate-180" : ""
-                          }`}
+                        className={`h-4 w-4 text-gray-400 transition-transform ${
+                          sortDirection === "desc" ? "transform rotate-180" : ""
+                        }`}
                       />
                     )}
                   </div>
@@ -251,8 +240,9 @@ const ElegantUsersTable = () => {
                     Email
                     {sortField === "email" && (
                       <ChevronDown
-                        className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === "desc" ? "transform rotate-180" : ""
-                          }`}
+                        className={`h-4 w-4 text-gray-400 transition-transform ${
+                          sortDirection === "desc" ? "transform rotate-180" : ""
+                        }`}
                       />
                     )}
                   </div>
@@ -265,8 +255,9 @@ const ElegantUsersTable = () => {
                     Perfil
                     {sortField === "role" && (
                       <ChevronDown
-                        className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === "desc" ? "transform rotate-180" : ""
-                          }`}
+                        className={`h-4 w-4 text-gray-400 transition-transform ${
+                          sortDirection === "desc" ? "transform rotate-180" : ""
+                        }`}
                       />
                     )}
                   </div>
@@ -279,8 +270,9 @@ const ElegantUsersTable = () => {
                     Status
                     {sortField === "isActive" && (
                       <ChevronDown
-                        className={`h-4 w-4 text-gray-400 transition-transform ${sortDirection === "desc" ? "transform rotate-180" : ""
-                          }`}
+                        className={`h-4 w-4 text-gray-400 transition-transform ${
+                          sortDirection === "desc" ? "transform rotate-180" : ""
+                        }`}
                       />
                     )}
                   </div>
@@ -291,8 +283,8 @@ const ElegantUsersTable = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {sortedUsuarios.length > 0 ? (
-                sortedUsuarios.map((usuario) => (
+              {currentItems.length > 0 ? (
+                currentItems.map((usuario) => (
                   <React.Fragment key={usuario.id}>
                     <tr
                       className="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -326,13 +318,11 @@ const ElegantUsersTable = () => {
                       <td className="px-6 py-4">
                         {usuario.isActive ? (
                           <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-medium rounded-full bg-emerald-100 text-emerald-800">
-                            <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />{" "}
-                            Ativo
+                            <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" /> Ativo
                           </span>
                         ) : (
                           <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-medium rounded-full bg-rose-100 text-rose-800">
-                            <XCircle className="h-3 w-3 mr-1 text-rose-500" />{" "}
-                            Inativo
+                            <XCircle className="h-3 w-3 mr-1 text-rose-500" /> Inativo
                           </span>
                         )}
                       </td>
@@ -343,9 +333,7 @@ const ElegantUsersTable = () => {
                               e.stopPropagation();
                               iniciarEdicao(usuario);
                             }}
-                            className="group relative inline-flex items-center justify-center p-2 overflow-hidden 
-        rounded-xl bg-gray-100 shadow-md transition-all duration-300 
-        hover:bg-gray-200 hover:shadow-lg active:scale-95"
+                            className="group relative inline-flex items-center justify-center p-2 overflow-hidden rounded-xl bg-gray-100 shadow-md transition-all duration-300 hover:bg-gray-200 hover:shadow-lg active:scale-95"
                             title="Editar"
                           >
                             <span className="absolute inset-0 bg-gray-300 opacity-0 group-hover:opacity-20 transition-opacity"></span>
@@ -353,9 +341,7 @@ const ElegantUsersTable = () => {
                           </button>
 
                           <button
-                            className="group relative inline-flex items-center justify-center p-2 overflow-hidden 
-      rounded-xl bg-rose-100 shadow-md transition-all duration-300 
-      hover:bg-rose-200 hover:shadow-lg active:scale-95"
+                            className="group relative inline-flex items-center justify-center p-2 overflow-hidden rounded-xl bg-rose-100 shadow-md transition-all duration-300 hover:bg-rose-200 hover:shadow-lg active:scale-95"
                             title="Excluir"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -373,7 +359,7 @@ const ElegantUsersTable = () => {
                         </div>
                       </td>
                     </tr>
-                    {expandedUser === usuario.id && (
+                     {expandedUser === usuario.id && (
                       <tr className="bg-gray-50">
                         <td colSpan={5} className="px-6 py-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -452,9 +438,7 @@ const ElegantUsersTable = () => {
                   <td colSpan={5} className="px-6 py-8 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="text-gray-300 text-4xl mb-2">📋</div>
-                      <p className="text-gray-500 font-medium">
-                        Nenhum usuário encontrado
-                      </p>
+                      <p className="text-gray-500 font-medium">Nenhum usuário encontrado</p>
                     </div>
                   </td>
                 </tr>
@@ -462,16 +446,20 @@ const ElegantUsersTable = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Componente de paginação */}
+        <UsersPagination
+          currentPage={currentPage}
+          totalItems={sortedUsuarios.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       <AddUserModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleAddUserSuccess}
-        onSave={(novoUsuario) => {
-          const newUser: Usuario = { ...novoUsuario, id: String(Date.now()) };
-          setUsuarios((prevUsuarios) => [...prevUsuarios, newUser]);
-        }}
       />
 
       <EditUserModal

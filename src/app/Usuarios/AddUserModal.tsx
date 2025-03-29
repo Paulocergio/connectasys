@@ -1,3 +1,7 @@
+
+
+
+
 import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { userService } from "../../lib/services/userService";
@@ -10,6 +14,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
   const [shouldShowPassword, setShouldShowPassword] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+  
   const [userFormData, setUserFormData] = useState<UserFormData>({
     firstName: "",
     email: "",
@@ -77,7 +82,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
       setIsLoading(true);
       const userPayload: UserPayload = {
         ...userFormData,
-        password: userFormData.passwordHash // Envia a senha em texto plano (via HTTPS)
+        PasswordHash: userFormData.passwordHash 
       };
       
       const updatedUser: UserResponse = await userService.CreateOrUpdateUser(userPayload);
