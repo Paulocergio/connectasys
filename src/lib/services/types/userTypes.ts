@@ -142,7 +142,37 @@ export interface UserPayload {
    export interface PesquisaChangeEvent extends React.ChangeEvent<HTMLInputElement> { }
 
 
-  
 
+  
+export interface UsersTableProps {
+  usuarios: User[];
+  iniciarEdicao: (usuario: User) => void;
+  deletarUsuario: (id: number) => void;
+}
+
+export interface UsersPaginationProps {
+  paginaAtual: number;
+  totalPaginas: number;
+  usuariosFiltrados: User[];
+  registrosPorPagina: number;
+  handlePaginacao: {
+    irParaPaginaAnterior: () => void;
+    irParaProximaPagina: () => void;
+    irParaPagina: (numeroPagina: number) => void;
+  };
+}
+
+export interface AddUserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (novoUsuario: Omit<User, 'id'>) => void;
+}
+
+export interface EditUserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  usuario: User | null;
+  onSave: (usuarioEditado: User) => void;
+}
   
   

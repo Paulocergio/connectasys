@@ -7,7 +7,7 @@ import UsersPagination from './UsersPagination';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
 import { User } from '@/lib/services/types/userTypes';
-
+import { UsersTableProps , UsersPaginationProps ,AddUserModalProps , EditUserModalProps } from '@/lib/services/types/userTypes';
 export default function Page() {
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [carregando, setCarregando] = useState(true);

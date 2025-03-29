@@ -17,6 +17,8 @@ import DeleteConfirmationModal from "./DeleteConfirmationModal";
 
 import { Usuario, UserResponse } from "../../lib/services/types/userTypes";
 
+
+
 const ElegantUsersTable = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
