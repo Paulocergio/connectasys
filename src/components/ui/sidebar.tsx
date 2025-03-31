@@ -57,7 +57,7 @@ export default function SidebarWrapper({ children }: { children: React.ReactNode
   const sidebarMenuItems = [
     { icon: <Home className="w-5 h-5" />, label: "Dashboard", path: "/dashboard" },
     { icon: <Users className="w-5 h-5" />, label: "Usuarios", path: "/Usuarios" },
-    { icon: <Activity className="w-5 h-5" />, label: "Analytics", path: "/analytics" },
+    { icon: <Activity className="w-5 h-5" />, label: "fornecedores", path: "/fornecedores" },
     { icon: <ShoppingCart className="w-5 h-5" />, label: "Sales", path: "/sales" },
     { icon: <Database className="w-5 h-5" />, label: "Inventory", path: "/inventory" },
     { icon: <CreditCard className="w-5 h-5" />, label: "Finances", path: "/finances" },

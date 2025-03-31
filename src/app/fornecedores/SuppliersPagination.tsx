@@ -2,33 +2,36 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-type UsersPaginationProps = {
+interface SuppliersPaginationProps {
   currentPage: number;
-  totalItems: number;
-  itemsPerPage: number;
+  totalPages: number;
   onPageChange: (page: number) => void;
-};
+  itemsPerPage: number;
+  totalItems: number;
+}
 
-const UsersPagination = ({
+const SuppliersPagination = ({
   currentPage,
-  totalItems,
-  itemsPerPage,
+  totalPages,
   onPageChange,
-}: UsersPaginationProps) => {
-  if (!totalItems || !itemsPerPage || totalItems <= 0 || itemsPerPage <= 0) return null;
-
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  itemsPerPage,
+  totalItems,
+}: SuppliersPaginationProps) => {
   if (totalPages <= 1) return null;
+
+  // Cálculo dos itens sendo exibidos
+  const firstItem = (currentPage - 1) * itemsPerPage + 1;
+  const lastItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
     <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
       <div className="text-sm text-gray-600">
-      
+   
       </div>
 
       <div className="flex items-center space-x-2">
         <button
-          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className={`p-2 rounded-lg flex items-center justify-center ${
             currentPage === 1
@@ -67,7 +70,7 @@ const UsersPagination = ({
         })}
 
         <button
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className={`p-2 rounded-lg flex items-center justify-center ${
             currentPage === totalPages
@@ -82,4 +85,4 @@ const UsersPagination = ({
   );
 };
 
-export default UsersPagination;
+export default SuppliersPagination;
