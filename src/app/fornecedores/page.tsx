@@ -98,7 +98,6 @@ const SuppliersPage = () => {
   };
 
   if (loading && suppliers.length === 0) return <div className="p-6">Carregando fornecedores...</div>;
-  if (error && suppliers.length === 0) return <div className="p-6">{error}</div>;
 
   return (
 

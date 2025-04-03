@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, CheckCircle, Building, Truck, Phone, Mail, MapPin } from 'lucide-react';
+import { supplierService } from '@/lib/services/SupplierService';
 
 interface SupplierFormData {
   name: string;
@@ -15,6 +16,7 @@ interface SupplierFormData {
   zipCode: string;
   category: string;
   isActive: boolean;
+  secondaryEmail?: string;
 }
 
 interface AddSupplierModalProps {
@@ -36,35 +38,176 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
     zipCode: '',
     category: 'geral',
     isActive: true,
+    secondaryEmail: ''
   });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastSearchedCnpj, setLastSearchedCnpj] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const cnpjInputRef = useRef<HTMLInputElement>(null);
+
+  // Fecha o toast após 5 segundos
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => {
+        setToast({ ...toast, show: false });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
-    
+
     setFormData({
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSuccess(formData);
-    onClose();
+  const formatCNPJ = (cnpj: string) => {
+    return cnpj
+      .replace(/\D/g, '')
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2')
+      .substring(0, 18);
   };
 
+  const formatCEP = (cep: string) => {
+    return cep
+      .replace(/\D/g, '')
+      .replace(/^(\d{5})(\d)/, '$1-$2')
+      .substring(0, 9);
+  };
+
+  const validateForm = (): boolean => {
+    const cleanCnpj = formData.cnpj.replace(/\D/g, '');
+    
+    if (cleanCnpj.length !== 14) {
+      setToast({ show: true, message: 'CNPJ deve ter 14 dígitos', type: 'error' });
+      cnpjInputRef.current?.focus();
+      return false;
+    }
+
+    if (!formData.name.trim()) {
+      setToast({ show: true, message: 'Nome/Razão Social é obrigatório', type: 'error' });
+      return false;
+    }
+
+    return true;
+  };
+
+  const fetchSupplierData = async () => {
+    const cleanCnpj = formData.cnpj.replace(/\D/g, '');
+
+    if (cleanCnpj.length === 14 && cleanCnpj !== lastSearchedCnpj) {
+      setIsLoading(true);
+      try {
+        const supplier = await supplierService.getSupplierByCNPJ(cleanCnpj);
+        setLastSearchedCnpj(cleanCnpj);
+
+        setFormData(prev => ({
+          ...prev,
+          name: supplier.razaoSocial || supplier.nomeFantasia || prev.name,
+          cnpj: cleanCnpj,
+          address: `${supplier.endereco?.logradouro || ''} ${supplier.endereco?.numero || ''}`.trim() || prev.address,
+          city: supplier.endereco?.municipio || prev.city,
+          state: supplier.endereco?.uf || prev.state,
+          zipCode: formatCEP(supplier.endereco?.cep || '') || prev.zipCode,
+          isActive: supplier.situacaoCadastral === 'ATIVA',
+          email: prev.email,
+          phone: prev.phone,
+          country: prev.country,
+          category: prev.category
+        }));
+      } catch (error) {
+        console.error('Erro ao buscar fornecedor:', error);
+        setToast({ show: true, message: 'Fornecedor não encontrado na base de dados', type: 'warning' });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleCnpjBlur = async () => {
+    await fetchSupplierData();
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchSupplierData();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [formData.cnpj]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    setIsLoading(true);
+  
+    try {
+      const cleanCnpj = formData.cnpj.replace(/\D/g, '');
+      const cleanZipCode = formData.zipCode.replace(/\D/g, '');
+  
+      // Estrutura corrigida conforme o que a API espera
+      const supplierToCreate = {
+        supplierDto: {
+          name: formData.name,
+          cnpj: cleanCnpj,
+          email: formData.email,
+          phone: formData.phone,
+          address: {
+            street: formData.address.split(',')[0]?.trim() || '',
+            number: formData.address.split(',')[1]?.trim() || '',
+            city: formData.city,
+            state: formData.state,
+            country: formData.country,
+            zipCode: cleanZipCode
+          },
+          category: formData.category,
+          isActive: formData.isActive,
+          secondaryEmail: formData.secondaryEmail
+        }
+      };
+  
+      const createdSupplier = await supplierService.createSupplier(supplierToCreate);
+      
+      setToast({ show: true, message: 'Fornecedor cadastrado com sucesso!', type: 'success' });
+      onSuccess(createdSupplier);
+      resetForm();
+      onClose();
+    } catch (error: any) {
+      console.error('Erro ao cadastrar fornecedor:', error);
+      const errorMessage = error.response?.data?.message || 'Erro ao cadastrar fornecedor';
+      setToast({ show: true, message: errorMessage, type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center ">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 p-4 rounded-md ${
+          toast.type === 'success' ? 'bg-green-500' : 
+          toast.type === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+        } text-white shadow-lg z-50`}>
+          {toast.message}
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-4">
             <Building className="text-blue-600" size={28} strokeWidth={2} />
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Adicionar Novo Fornecedor
-            </h2>
+            <h2 className="text-2xl font-semibold text-gray-800">Adicionar Novo Fornecedor</h2>
           </div>
           <button
             onClick={onClose}
@@ -76,24 +219,32 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          <div>
+            {/* CNPJ Field */}
+            <div className="relative">
               <label htmlFor="cnpj" className="block text-sm font-medium text-gray-700 mb-2">
                 CNPJ*
               </label>
               <input
+                ref={cnpjInputRef}
                 type="text"
                 id="cnpj"
                 name="cnpj"
-                value={formData.cnpj}
+                value={formatCNPJ(formData.cnpj)}
                 onChange={handleInputChange}
+                onBlur={handleCnpjBlur}
                 required
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 placeholder="00.000.000/0000-00"
+                disabled={isLoading}
               />
+              {isLoading && (
+                <div className="absolute right-3 top-9">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                </div>
+              )}
             </div>
 
-            
+            {/* Name Field */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                 Nome/Razão Social*
@@ -110,8 +261,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
-           
-
+            {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -127,6 +277,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
+            {/* Phone Field */}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                 Telefone
@@ -142,6 +293,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
+            {/* Category Field */}
             <div>
               <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
                 Categoria
@@ -160,6 +312,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               </select>
             </div>
 
+            {/* ZIP Code Field */}
             <div>
               <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-2">
                 CEP
@@ -175,6 +328,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
+            {/* Address Field */}
             <div>
               <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
                 Endereço
@@ -190,6 +344,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
+            {/* City Field */}
             <div>
               <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
                 Cidade
@@ -205,6 +360,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
+            {/* State Field */}
             <div>
               <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
                 Estado
@@ -220,6 +376,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
+            {/* Country Field */}
             <div>
               <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
                 País
@@ -235,6 +392,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
               />
             </div>
 
+            {/* Active Checkbox */}
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -250,19 +408,23 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
             </div>
           </div>
 
+          {/* Form Actions */}
           <div className="mt-6 flex justify-end gap-4">
             <button
               type="button"
               onClick={onClose}
               className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all"
+              disabled={isLoading}
             >
               Cancelar
             </button>
             <button
               type="submit"
               className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all flex items-center gap-2"
+              disabled={isLoading}
             >
-              <CheckCircle size={18} /> Salvar Fornecedor
+              <CheckCircle size={18} />
+              {isLoading ? 'Carregando...' : 'Salvar Fornecedor'}
             </button>
           </div>
         </form>
