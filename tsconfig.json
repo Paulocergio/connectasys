@@ -22,6 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/lib/services/cepService .js", "src/lib/services/SupplierService.js", "src/lib/services/userService", "src/lib/hooks/useUsers.js", "src/lib/hooks/useAuth.js", "src/lib/api/axios.js"],
   "exclude": ["node_modules"]
 }
